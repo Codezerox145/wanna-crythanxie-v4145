@@ -46,7 +46,9 @@ async function main() {
       PORT: String(port),
       JWT_SECRET: secret,
       PLATFORM_DATA_DIR: dataDir,
-      DASHBOARD_ORIGIN: 'https://dashboard.example'
+      DASHBOARD_ORIGIN: 'https://dashboard.example',
+      OWNER_EMAILS: 'owner@example.com',
+      SERVER_REGISTRY_JSON: JSON.stringify([{ id: 'current-api', name: 'Primary API' }])
     },
     stdio: 'ignore'
   })
@@ -92,6 +94,7 @@ async function main() {
   const created = await signup.json()
   assert.ok(created.token)
   assert.equal(created.user.email, 'first@example.com')
+  assert.equal(created.user.is_owner, false)
   assert.equal(Object.hasOwn(created.user, 'hash'), false)
 
   const duplicate = await fetch(base + '/auth/signup', {
@@ -114,6 +117,7 @@ async function main() {
   const loggedIn = await login.json()
   assert.ok(loggedIn.token)
   assert.equal(loggedIn.user.id, created.user.id)
+  assert.equal(loggedIn.user.is_owner, false)
 
   const invalidSession = await fetch(base + '/sessions', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + loggedIn.token },
@@ -126,6 +130,32 @@ async function main() {
     body: JSON.stringify({ phoneNumber: '263780706629', region: 'auto', communitySupportConfirmed: false })
   })
   assert.equal(unconfirmedSession.status, 400)
+
+  const normalOwnerPanel = await fetch(base + '/owner/overview', {
+    headers: { Authorization: 'Bearer ' + loggedIn.token }
+  })
+  assert.equal(normalOwnerPanel.status, 403)
+
+  const ownerSignup = await fetch(base + '/auth/signup', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'owner@example.com', password: 'owner-password-123' })
+  })
+  assert.equal(ownerSignup.status, 201)
+  const ownerAccount = await ownerSignup.json()
+  assert.equal(ownerAccount.user.is_owner, true)
+  const ownerOverview = await fetch(base + '/owner/overview', {
+    headers: { Authorization: 'Bearer ' + ownerAccount.token }
+  })
+  assert.equal(ownerOverview.status, 200)
+  const ownerData = await ownerOverview.json()
+  assert.equal(ownerData.users_total, 2)
+  assert.equal(ownerData.environment.server_registry_configured, true)
+
+  const registry = await fetch(base + '/servers', {
+    headers: { Authorization: 'Bearer ' + loggedIn.token }
+  })
+  assert.equal(registry.status, 200)
+  assert.equal((await registry.json()).total, 1)
 
   const unauthorized = await fetch(base + '/sessions')
   assert.equal(unauthorized.status, 401)
@@ -142,7 +172,7 @@ async function main() {
   assert.equal(runtime.status, 200)
   assert.equal((await runtime.json()).max_sessions_per_account, 3)
 
-  console.log('API integration checks passed: health, CORS, signup, duplicate signup, login, invalid credentials, authorization, sessions and runtime.')
+  console.log('API integration checks passed: health, CORS, signup/login, owner-role gating, owner overview, server registry, sessions and runtime.')
 }
 
 main()
