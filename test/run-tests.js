@@ -186,6 +186,15 @@ async function main() {
     assert.strictEqual(isOwner('999999999999@s.whatsapp.net'), false);
   });
 
+  check('permissions normalizes digits-only Render owner numbers to WhatsApp JIDs', () => {
+    const original = process.env.OWNER_NUMBERS;
+    process.env.OWNER_NUMBERS = '263780706629';
+    const { isOwner, isPrimaryOwner } = require('../lib/permissions');
+    assert.strictEqual(isPrimaryOwner('263780706629:4@s.whatsapp.net'), true);
+    assert.strictEqual(isOwner('263780706629@s.whatsapp.net'), true);
+    process.env.OWNER_NUMBERS = original;
+  });
+
   check('menu.js renders the compact category shortcuts', () => {
     const menu = require('../lib/menu');
     assert.strictEqual(menu.CATEGORIES.length, 10);
