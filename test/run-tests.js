@@ -228,7 +228,7 @@ async function main() {
     assert(result && result.plainText, 'pair command did not return a plain-text invitation');
     assert(result.plainText.includes('WANNA CRY THANXIEE'));
     assert(result.plainText.includes('Powered By : THANXIEE DEV'));
-    assert(result.plainText.includes('https://wanna-crythanxie-v4145-loch.vercel.app'));
+    assert(result.plainText.includes('https://wanna-crythanxie-v4145.vercel.app/pair'));
     assert(result.plainText.includes('Want your own WhatsApp bot?'));
   });
 
@@ -241,7 +241,7 @@ async function main() {
       rawText: 'Pair Bot'
     }));
     assert(result && result.plainText);
-    assert(result.plainText.includes('https://wanna-crythanxie-v4145-loch.vercel.app'));
+    assert(result.plainText.includes('https://wanna-crythanxie-v4145.vercel.app/pair'));
   });
 
   check('filters.js detects a link when antilink is on', () => {
