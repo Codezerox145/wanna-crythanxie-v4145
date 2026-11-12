@@ -115,6 +115,18 @@ async function main() {
   assert.ok(loggedIn.token)
   assert.equal(loggedIn.user.id, created.user.id)
 
+  const invalidSession = await fetch(base + '/sessions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + loggedIn.token },
+    body: JSON.stringify({ phoneNumber: '123', region: 'auto', communitySupportConfirmed: true })
+  })
+  assert.equal(invalidSession.status, 400)
+
+  const unconfirmedSession = await fetch(base + '/sessions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + loggedIn.token },
+    body: JSON.stringify({ phoneNumber: '263780706629', region: 'auto', communitySupportConfirmed: false })
+  })
+  assert.equal(unconfirmedSession.status, 400)
+
   const unauthorized = await fetch(base + '/sessions')
   assert.equal(unauthorized.status, 401)
 
