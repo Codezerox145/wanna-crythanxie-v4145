@@ -67,7 +67,6 @@ export default function FeaturePage() {
     </section>
   </Layout>
 }
-}
 async function copyText(value) {
   if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value)
   const field = document.createElement('textarea')
