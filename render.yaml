@@ -24,6 +24,12 @@ services:
         value: https://github.com/Codezerox145/wanna-crythanxie-v4145
       - key: OWNER_NUMBERS
         sync: false
+      - key: OWNER_EMAILS
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: SERVER_REGISTRY_JSON
+        value: '[{"id":"current-api","name":"Primary API + Baileys Worker","provider":"Render","region":"managed","country":"Unknown","location":"Render managed host","cpu":"Shared","ram":"Plan dependent","storage":"Persistent disk recommended","operating_system":"Linux","status":"online","note":"Primary API host; live worker count is reported by the health API."}]'
       - key: DASHBOARD_ORIGIN
         sync: false
       - key: GEMINI_API_KEY
