@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const path = require('node:path');
 const pino = require('pino');
 const {
@@ -266,7 +267,12 @@ async function restartSession(options) {
   return startSession(options);
 }
 
+async function sendText(id, jid, text) {
+  const entry = active.get(id);
+  if (!entry || !entry.sock?.user) throw new Error('WhatsApp session is not connected. Reconnect the device and try again.');
+  return entry.sock.sendMessage(jid, { text: String(text || '').slice(0, 4000) });
+}
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, isRunning, runningCount };
+module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, sendText, isRunning, runningCount };
