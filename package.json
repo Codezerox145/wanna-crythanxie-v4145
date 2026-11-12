@@ -1,0 +1,27 @@
+{
+  "name": "wanna-cry-thanxiee-platform",
+  "version": "20.2.2",
+  "private": true,
+  "main": "server/index.js",
+  "scripts": {
+    "api": "node server/index.js",
+    "start": "npm run api",
+    "test": "node --check server/index.js && node --check bot/worker.js && node test/run-tests.js"
+  },
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "fluent-ffmpeg": "^2.1.3",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.5.0",
+    "sharp": "^0.33.5"
+  }
+}

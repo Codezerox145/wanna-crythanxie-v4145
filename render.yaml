@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: wanna-cry-thanxiee-api
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm run api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BOT_NAME
+        value: WANNA-CRY THANXIEE
+      - key: BOT_PREFIX
+        value: .
+      - key: BOT_CHANNEL_LINK
+        value: https://whatsapp.com/channel/0029VbE9KJvJkK73C7RNvP2z
+      - key: BOT_GITHUB_LINK
+        value: https://github.com/Codezerox145/wanna-crythanxie-v4145
+      - key: OWNER_NUMBERS
+        sync: false
+      - key: DASHBOARD_ORIGIN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PLATFORM_DATA_DIR
+        value: ./platform_data
+      - key: MAX_SESSIONS_PER_USER
+        value: "3"
+      - key: BAILEYS_LOG_LEVEL
+        value: silent

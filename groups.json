@@ -1,0 +1,29 @@
+{
+  "test-filter-group@g.us:antilink": false,
+  "test-filter-group-2@g.us:antilink": true,
+  "12345-group@g.us": {
+    "welcomeOn": false,
+    "goodbyeOn": false,
+    "welcomeText": null,
+    "goodbyeText": null
+  },
+  "12345-group@g.us:badwords": [],
+  "12345-group@g.us:whitelist": [],
+  "12345-group@g.us:antilink": false,
+  "12345-group@g.us:antispam": false,
+  "12345-group@g.us:antibadword": false,
+  "12345-group@g.us:antiforward": false,
+  "12345-group@g.us:antiviewonce": false,
+  "12345-group@g.us:antimedia": false,
+  "12345-group@g.us:antisticker": false,
+  "12345-group@g.us:antilongtext": false,
+  "12345-group@g.us:antimention": false,
+  "12345-group@g.us:antiinvite": false,
+  "12345-group@g.us:antivoice": false,
+  "12345-group@g.us:antidocument": false,
+  "12345-group@g.us:anticontact": false,
+  "12345-group@g.us:antilocation": false,
+  "12345-group@g.us:anticaps": false,
+  "12345-group@g.us:blacklist": [],
+  "12345-group@g.us:watchlist": []
+}

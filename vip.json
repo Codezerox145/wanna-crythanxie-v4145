@@ -1,0 +1,87 @@
+{
+  "keys": {
+    "3257B-2DCA0": {
+      "createdAt": 1794023649963,
+      "expiresAt": 1794628449963,
+      "durationMs": 604800000,
+      "durationLabel": "7d",
+      "usedBy": "test_user_7d@s.whatsapp.net",
+      "used": true,
+      "redeemedAt": 1794023649963
+    },
+    "A6759-7D6D0": {
+      "createdAt": 1794023737836,
+      "expiresAt": 1794628537836,
+      "durationMs": 604800000,
+      "durationLabel": "7d",
+      "usedBy": "test_user_7d@s.whatsapp.net",
+      "used": true,
+      "redeemedAt": 1794023737837
+    },
+    "39FE0-2B2D5": {
+      "createdAt": 1794023782745,
+      "expiresAt": 1794628582745,
+      "durationMs": 604800000,
+      "durationLabel": "7d",
+      "usedBy": "test_user_7d@s.whatsapp.net",
+      "used": true,
+      "redeemedAt": 1794023782746
+    }
+  },
+  "active": {},
+  "passlock": {
+    "hash": "5eea546ba9cc9416507bcd4c39761534ec4ffff9eaf8f1f06fc137a7e81bf24e",
+    "createdAt": 1794405253916,
+    "expiresAt": 1794408853916,
+    "revoked": true,
+    "usedAt": 1794405253919
+  },
+  "unlockedUntil": 0,
+  "audit": [
+    {
+      "event": "passlock_generated",
+      "actor": "263780706629@s.whatsapp.net",
+      "at": "2026-11-10T14:14:12.115Z",
+      "expiresAt": 1794323652114
+    },
+    {
+      "event": "passlock_rejected",
+      "actor": "263780706629@s.whatsapp.net",
+      "at": "2026-11-10T14:14:12.115Z"
+    },
+    {
+      "event": "vip_unlocked",
+      "actor": "263780706629@s.whatsapp.net",
+      "at": "2026-11-10T14:14:12.116Z",
+      "expiresAt": 1794323652114
+    },
+    {
+      "event": "vip_locked",
+      "actor": "263780706629@s.whatsapp.net",
+      "at": "2026-11-10T14:14:12.117Z"
+    },
+    {
+      "event": "passlock_generated",
+      "actor": "263780706629@s.whatsapp.net",
+      "at": "2026-11-11T13:54:13.918Z",
+      "expiresAt": 1794408853916
+    },
+    {
+      "event": "passlock_rejected",
+      "actor": "263780706629@s.whatsapp.net",
+      "at": "2026-11-11T13:54:13.918Z"
+    },
+    {
+      "event": "vip_unlocked",
+      "actor": "263780706629@s.whatsapp.net",
+      "at": "2026-11-11T13:54:13.919Z",
+      "expiresAt": 1794408853916
+    },
+    {
+      "event": "vip_locked",
+      "actor": "263780706629@s.whatsapp.net",
+      "at": "2026-11-11T13:54:13.920Z"
+    }
+  ],
+  "attempts": {}
+}

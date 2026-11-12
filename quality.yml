@@ -1,0 +1,38 @@
+name: Project quality checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  bot-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run audit
+      - run: npm test
+      - run: npm run test:api
+
+  dashboard-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard-clean
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_BOT_AVATAR_URL: https://raw.githubusercontent.com/Mrzero404-TECH/wanna-crythanxie-v4145/main/assets/bot-avatar.jpg
+          NEXT_PUBLIC_CHANNEL_LINK: https://whatsapp.com/channel/0029VbCqzTQAjPXKaZPEdt3r
+          NEXT_PUBLIC_GITHUB_REPO: https://github.com/Mrzero404-TECH/wanna-crythanxie-v4145
