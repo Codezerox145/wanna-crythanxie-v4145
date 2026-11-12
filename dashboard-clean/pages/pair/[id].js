@@ -27,6 +27,7 @@ export default function PairingCode() {
       try {
         const data = await api.getSession(id)
         setSession(data)
+        setError('')
         if (data.status === 'online') {
           clearInterval(timer)
           clearInterval(countdown)
@@ -56,9 +57,7 @@ export default function PairingCode() {
   return (
     <Layout title="Pairing code">
       <div className="max-w-md mx-auto rounded-xl2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 text-center">
-        <div className="w-14 h-14 mx-auto rounded-full bg-brand-600 text-white flex items-center justify-center text-2xl font-bold mb-3">
-          {BOT_NAME.charAt(0)}
-        </div>
+        <img src={BOT_AVATAR} alt={BOT_NAME} className="mx-auto mb-3 h-16 w-16 rounded-2xl border border-slate-200 object-cover shadow-sm dark:border-slate-700" />
         <p className="text-sm text-slate-400 mb-1">Your Pairing Code</p>
 
         {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
@@ -78,6 +77,8 @@ export default function PairingCode() {
             </p>
           </>
         )}
+
+        {session?.status === 'logged_out' && <p className="mb-4 text-sm text-red-500">WhatsApp logged this device out. Return to Pair a device and request a new code.</p>}
 
         {session?.status === 'online' && (
           <p className="text-brand-600 font-medium text-sm mb-4">✅ Connected! Redirecting…</p>
