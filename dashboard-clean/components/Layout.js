@@ -55,8 +55,8 @@ export default function Layout({ children, title }) {
   }, [])
   function signOut() { logout(); router.replace('/login') }
   const isActive = item => router.pathname === item.href || (item.href !== '/overview#statistics' && router.pathname.startsWith(item.href + '/')) || (item.href === '/overview#statistics' && router.asPath.includes('#statistics'))
-  const mobileItems = visibleNav.filter(x => ['/overview','/sessions','/servers','/settings'].includes(x.href))
   const visibleNav = NAV.filter(x => !x.ownerOnly || user?.is_owner)
+  const mobileItems = visibleNav.filter(x => ['/overview','/sessions','/servers','/settings'].includes(x.href))
   const moreItems = visibleNav.filter(x => !mobileItems.includes(x))
   return <div className="min-h-screen bg-[#070b18] text-slate-100 md:flex">
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[252px] flex-col border-r border-white/[.07] bg-[#090d1c] px-4 py-5 md:flex">
