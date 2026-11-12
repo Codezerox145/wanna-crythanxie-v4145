@@ -9,7 +9,7 @@
 
 process.env.OWNER_NUMBERS = process.env.OWNER_NUMBERS || '263780706629@s.whatsapp.net';
 process.env.BOT_NAME = 'WANNA-CRY THANXIEE';
-process.env.BOT_CHANNEL_LINK = 'https://whatsapp.com/channel/0029VbCqzTQAjPXKaZPEdt3r';
+process.env.BOT_CHANNEL_LINK = 'https://whatsapp.com/channel/0029VbE9KJvJkK73C7RNvP2z';
 
 const assert = require('assert');
 const path = require('path');
@@ -111,7 +111,7 @@ async function main() {
     const menu = require('../lib/menu');
     const card = menu.mainMenu({ sender: '263711111111@s.whatsapp.net', isGroup: false }, {});
     assert.strictEqual(card.menuCard, true);
-    assert(card.caption.includes('〔 WANNA-CRY THANXIEE · v20.2.1 〕'));
+    assert(card.caption.includes('〔 WANNA-CRY THANXIEE · v20.2.2 〕'));
     assert(card.caption.includes('Status'));
     assert(card.caption.includes('Owner'));
     assert(card.caption.includes('.pair'));
