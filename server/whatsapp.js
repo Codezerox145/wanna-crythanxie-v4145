@@ -135,7 +135,14 @@ async function startSession(options) {
   });
   const entry = { id, sock, authDir, dataDir, phoneNumber, onUpdate, reconnectTimer: null, schedulerTimer: null, closing: false, ready: null };
   active.set(id, entry);
-  sock.ev.on('creds.update', state.saveCreds);\n  const dbForSchedules = require('../lib/db');\n  const { brandedReply } = require('../lib/brand');\n  const scheduler = require('../lib/scheduler');\n  entry.schedulerTimer = setInterval(() => {\n    dbForSchedules.runWithDataDir(dataDir, () => scheduler.tick(sock, brandedReply)).catch(error => logger.warn({ err: error }, 'Scheduled message tick failed'));\n  }, 15000);\n  entry.schedulerTimer.unref?.();
+  sock.ev.on('creds.update', state.saveCreds);
+  const dbForSchedules = require('../lib/db');
+  const { brandedReply } = require('../lib/brand');
+  const scheduler = require('../lib/scheduler');
+  entry.schedulerTimer = setInterval(() => {
+    dbForSchedules.runWithDataDir(dataDir, () => scheduler.tick(sock, brandedReply)).catch(error => logger.warn({ err: error }, 'Scheduled message tick failed'));
+  }, 15000);
+  entry.schedulerTimer.unref?.();
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
     for (const message of messages || []) await processIncoming(sock, entry, message);
