@@ -133,9 +133,9 @@ async function startSession(options) {
     syncFullHistory: false,
     generateHighQualityLinkPreview: false
   });
-  const entry = { id, sock, authDir, dataDir, phoneNumber, onUpdate, reconnectTimer: null, closing: false, ready: null };
+  const entry = { id, sock, authDir, dataDir, phoneNumber, onUpdate, reconnectTimer: null, schedulerTimer: null, closing: false, ready: null };
   active.set(id, entry);
-  sock.ev.on('creds.update', state.saveCreds);
+  sock.ev.on('creds.update', state.saveCreds);\n  const dbForSchedules = require('../lib/db');\n  const { brandedReply } = require('../lib/brand');\n  const scheduler = require('../lib/scheduler');\n  entry.schedulerTimer = setInterval(() => {\n    dbForSchedules.runWithDataDir(dataDir, () => scheduler.tick(sock, brandedReply)).catch(error => logger.warn({ err: error }, 'Scheduled message tick failed'));\n  }, 15000);\n  entry.schedulerTimer.unref?.();
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
     for (const message of messages || []) await processIncoming(sock, entry, message);
