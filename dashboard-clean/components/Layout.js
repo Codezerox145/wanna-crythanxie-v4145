@@ -40,7 +40,7 @@ export default function Layout({ children, title }) {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [mobileMore, setMobileMore] = useState(false)
-  useEffect(() => { setUser(getUser()) }, [])
+  useEffect(() => { document.documentElement.classList.add('dark'); setUser(getUser()) }, [])
   function signOut() { logout(); router.replace('/login') }
   const isActive = item => router.pathname === item.href || (item.href !== '/overview#statistics' && router.pathname.startsWith(item.href + '/')) || (item.href === '/overview#statistics' && router.asPath.includes('#statistics'))
   const mobileItems = NAV.filter(x => ['/overview','/sessions','/servers','/settings'].includes(x.href))
