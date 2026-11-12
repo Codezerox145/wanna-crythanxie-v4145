@@ -84,5 +84,8 @@ export const api = {
   runtime: () => request('/runtime'),
   analytics: () => request('/analytics'),
   servers: () => request('/servers'),
+  verifySupporter: githubUsername => request('/supporter/verify', { method: 'POST', body: { githubUsername } }),
+  ownerOverview: () => request('/owner/overview'),
+  ownerUsers: () => request('/owner/users'),
 }
 export function logout() { setToken(null); setUser(null); if (typeof window !== 'undefined') { sessionStorage.removeItem('token'); sessionStorage.removeItem('user') } }
