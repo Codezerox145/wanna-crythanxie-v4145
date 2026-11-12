@@ -74,8 +74,6 @@ async function processIncoming(sock, session, message) {
   if (!remoteJid || remoteJid === 'status@broadcast' || msg.key?.fromMe) return;
   const normalized = normalizeMessageContent(msg.message) || msg.message || {};
   const rawText = textFromMessage(normalized);
-  if (!rawText.trim()) return;
-
   const db = require('../lib/db');
   const { handleCommand } = require('../lib/commandHandler');
   const sender = msg.key?.participant || remoteJid;
@@ -89,6 +87,39 @@ async function processIncoming(sock, session, message) {
     const baseJid = value => String(value || '').split(':')[0];
     const senderEntry = participants.find(p => baseJid(p.id || p.jid) === baseJid(sender));
     const botEntry = participants.find(p => baseJid(p.id || p.jid) === baseJid(sock.user?.id));
+    const senderIsAdmin = Boolean(senderEntry?.admin);
+
+    // Security pipeline: scan hostile payloads first, then enforce group filters,
+    // then let ordinary commands see only messages that passed both checks.
+    if (isGroup) {
+      const antibug = require('../lib/antibug');
+      const filters = require('../lib/filters');
+      const threatHandled = await antibug.handleIncoming(sock, msg, remoteJid, async (groupJid, threatSender, reason, signature) => {
+        const action = db.get('groups', `${groupJid}:antiaction`, 'warn');
+        if (action === 'kick') {
+          try { await sock.groupParticipantsUpdate(groupJid, [threatSender], 'remove'); } catch (_) {}
+        } else if (action === 'mute') {
+          const key = `${groupJid}:muted`;
+          const muted = db.get('groups', key, []);
+          if (!muted.some(value => baseJid(value) === baseJid(threatSender))) muted.push(threatSender);
+          db.set('groups', key, muted);
+        } else {
+          db.push('modlog', `${groupJid}:${threatSender}`, { by: 'antibug', reason: signature || reason, time: Date.now() }, 200);
+        }
+      });
+      if (threatHandled) return;
+
+      const muted = db.get('groups', `${remoteJid}:muted`, []);
+      if (!senderIsAdmin && muted.some(value => baseJid(value) === baseJid(sender))) return;
+
+      const violation = filters.checkViolations(remoteJid, msg, sender, senderIsAdmin);
+      if (violation) {
+        await filters.enforce(sock, remoteJid, msg, sender, violation);
+        return;
+      }
+    }
+    if (!rawText.trim()) return;
+
     const contextInfo = normalized[getContentType(normalized)]?.contextInfo || {};
     const quotedMessage = contextInfo.quotedMessage || null;
     const quotedText = quotedMessage ? textFromMessage(quotedMessage) : null;
@@ -100,7 +131,7 @@ async function processIncoming(sock, session, message) {
       quotedKey: contextInfo.stanzaId ? { id: contextInfo.stanzaId, remoteJid, participant: contextInfo.participant } : null,
       quotedText, quotedMsgFull: quotedMessage ? { key: ctxQuotedKey(contextInfo, remoteJid), message: quotedMessage } : null,
       quotedImageBuffer: null, participants, groupMetadata,
-      isAdmin: Boolean(senderEntry?.admin), isBotAdmin: Boolean(botEntry?.admin),
+      isAdmin: senderIsAdmin, isBotAdmin: Boolean(botEntry?.admin),
       isOwner: false, isPrimaryOwner: false
     };
     try {
