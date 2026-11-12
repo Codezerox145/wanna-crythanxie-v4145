@@ -308,21 +308,40 @@ app.post('/supporter/verify', auth, async (req, res) => {
   const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'WANNA-CRY-THANXIEE' };
   if (process.env.GITHUB_TOKEN) headers.Authorization = 'Bearer ' + process.env.GITHUB_TOKEN;
   try {
-    const [star, fork] = await Promise.all([
-      fetch('https://api.github.com/users/' + encodeURIComponent(username) + '/starred/' + owner + '/' + repo, { headers }),
-      fetch('https://api.github.com/repos/' + encodeURIComponent(username) + '/' + repo, { headers })
+    const [starredRepos, ownedRepos] = await Promise.all([
+      (async () => {
+        const all = [];
+        for (let page = 1; page <= 10; page++) {
+          const response = await fetch('https://api.github.com/users/' + encodeURIComponent(username) + '/starred?per_page=100&page=' + page, { headers });
+          if (response.status === 403 || response.status === 429) throw Object.assign(new Error('GitHub rate limited'), { rateLimited: true });
+          if (!response.ok) throw new Error('GitHub star lookup failed');
+          const batch = await response.json(); all.push(...batch);
+          if (!Array.isArray(batch) || batch.length < 100) break;
+        }
+        return all;
+      })(),
+      (async () => {
+        const all = [];
+        for (let page = 1; page <= 10; page++) {
+          const response = await fetch('https://api.github.com/users/' + encodeURIComponent(username) + '/repos?type=owner&per_page=100&page=' + page, { headers });
+          if (response.status === 403 || response.status === 429) throw Object.assign(new Error('GitHub rate limited'), { rateLimited: true });
+          if (!response.ok) throw new Error('GitHub fork lookup failed');
+          const batch = await response.json(); all.push(...batch);
+          if (!Array.isArray(batch) || batch.length < 100) break;
+        }
+        return all;
+      })()
     ]);
-    if (star.status === 403 || star.status === 429 || fork.status === 403 || fork.status === 429) return res.status(503).json({ error: 'GitHub verification is rate limited. Please try again later.' });
-    const forkData = fork.ok ? await fork.json() : null;
-    const isStarred = star.status === 204;
-    const isForked = Boolean(forkData?.fork && forkData?.parent?.full_name?.toLowerCase() === (owner + '/' + repo).toLowerCase());
+    const targetRepo = (owner + '/' + repo).toLowerCase();
+    const isStarred = starredRepos.some(item => String(item.full_name || '').toLowerCase() === targetRepo);
+    const isForked = ownedRepos.some(item => item.fork && String(item.parent?.full_name || '').toLowerCase() === targetRepo);
     if (!isStarred || !isForked) return res.status(403).json({ error: 'Support verification incomplete. Your GitHub account must both STAR and FORK the official repository before an OTP is issued.', starred: isStarred, forked: isForked, repository: 'https://github.com/' + owner + '/' + repo });
-    const code = String(crypto.randomInt(100000, 1000000));
+        const code = String(crypto.randomInt(100000, 1000000));
     const records = readStore('supporter_otps', []).filter(item => item.user_id !== req.user.id || item.used || item.expires_at > Date.now());
     records.push({ user_id: req.user.id, github_username: username, code_hash: crypto.createHash('sha256').update(code).digest('hex'), expires_at: Date.now() + 10 * 60 * 1000, used: false });
     writeStore('supporter_otps', records.slice(-5000));
     return res.json({ ok: true, otp: code, expires_in_seconds: 600, message: 'GitHub star and fork verified. This one-time code expires in 10 minutes. Send it to the owner to request a VIP unlock key.' });
-  } catch (_) { return res.status(502).json({ error: 'Could not verify your GitHub activity right now. Please retry later.' }); }
+  } catch (error) { if (error.rateLimited) return res.status(503).json({ error: 'GitHub verification is rate limited. Please try again later.' }); return res.status(502).json({ error: 'Could not verify your GitHub activity right now. Please retry later.' }); }
 });
 app.post('/supporter/redeem-otp', auth, (req, res) => {
   const code = String(req.body?.otp || '').trim();
