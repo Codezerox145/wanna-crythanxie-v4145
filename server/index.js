@@ -178,7 +178,7 @@ app.delete('/sessions/:id', auth, async (req, res) => {
   const index = sessions.findIndex(item => item.id === req.params.id && item.user_id === req.user.id);
   if (index < 0) return res.status(404).json({ error: 'Session not found.' });
   const session = sessions[index];
-  await whatsapp.stopSession(session.id);
+  await whatsapp.logoutSession(session.id);
   sessions.splice(index, 1);
   writeStore('sessions', sessions);
   fs.rmSync(path.join(SESSION_DIR, session.id), { recursive: true, force: true });
