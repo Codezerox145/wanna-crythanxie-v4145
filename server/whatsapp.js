@@ -86,8 +86,9 @@ async function processIncoming(sock, session, message) {
       try { groupMetadata = await sock.groupMetadata(remoteJid); } catch (_) {}
     }
     const participants = groupMetadata?.participants || [];
-    const senderEntry = participants.find(p => p.id === sender || p.jid === sender);
-    const botEntry = participants.find(p => p.id === sock.user?.id || p.jid === sock.user?.id);
+    const baseJid = value => String(value || '').split(':')[0];
+    const senderEntry = participants.find(p => baseJid(p.id || p.jid) === baseJid(sender));
+    const botEntry = participants.find(p => baseJid(p.id || p.jid) === baseJid(sock.user?.id));
     const contextInfo = normalized[getContentType(normalized)]?.contextInfo || {};
     const quotedMessage = contextInfo.quotedMessage || null;
     const quotedText = quotedMessage ? textFromMessage(quotedMessage) : null;
@@ -154,10 +155,7 @@ async function startSession(options) {
     await db.runWithDataDir(dataDir, async () => {
       let groupName = 'the group';
       try { groupName = (await sock.groupMetadata(update.id)).subject || groupName; } catch (_) {}
-      for (const participant of update.participants || []) {
-        const payload = update.action === 'add'
-          ? welcome.renderWelcome(update.id, groupName, participant)
-          : welcome.renderGoodbye(update.id, groupName, participant);
+      const settings = welcome.getGroupSettings(update.id);\n      if (update.action === 'add' && !settings.welcomeOn) return;\n      if (update.action === 'remove' && !settings.goodbyeOn) return;\n      for (const participant of update.participants || []) {\n        const payload = update.action === 'add'\n          ? welcome.renderWelcome(update.id, groupName, participant)\n          : welcome.renderGoodbye(update.id, groupName, participant);
         try { await sock.sendMessage(update.id, payload); } catch (error) { logger.warn({ err: error }, 'Welcome/goodbye send failed'); }
       }
     });
