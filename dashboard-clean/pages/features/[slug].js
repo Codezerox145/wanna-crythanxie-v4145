@@ -67,8 +67,6 @@ export default function FeaturePage() {
     </section>
   </Layout>
 }
-, status: 'Coming Soon', detail: 'Payment processing, invoices, subscriptions and billing history are not active yet. No payment is being collected through this dashboard.', items: ['Secure payment gateway','Invoices and receipts','Subscription billing','Payment history and reconciliation'] },
-  owner: { title: 'Owner Panel', icon: '♜', status: 'Restricted', detail: 'Platform-wide administration requires a separately authorised owner role and admin API. A standard dashboard account cannot access privileged operations.', items: ['User administration','Plans and entitlements','Service health and audit logs','Security and platform configuration'], commands: ['.owner',' .botstats',' .runtime',' .logs'], checklist: ['Define owner identity and role-based access rules','Add admin API endpoints with audit logging','Add user, plan and entitlement management','Protect destructive actions with confirmation and re-authentication'] }
 }
 async function copyText(value) {
   if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value)
