@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { getUser, logout } from '../lib/api'
+import { api, getUser, logout } from '../lib/api'
 
 const BOT_NAME = process.env.NEXT_PUBLIC_BOT_NAME || 'WANNA-CRY THANXIEE'
 const AVATAR = process.env.NEXT_PUBLIC_BOT_AVATAR_URL || 'https://raw.githubusercontent.com/Codezerox145/wanna-crythanxie-v4145/main/bot-avatar.jpg'
@@ -40,7 +40,19 @@ export default function Layout({ children, title }) {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [mobileMore, setMobileMore] = useState(false)
-  useEffect(() => { document.documentElement.classList.add('dark'); setUser(getUser()) }, [])
+  const [apiState, setApiState] = useState('checking')
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', localStorage.getItem('theme') !== 'light')
+    setUser(getUser())
+    let alive = true
+    const check = async () => {
+      try { await api.health(); if (alive) setApiState('online') }
+      catch (_) { if (alive) setApiState('offline') }
+    }
+    check()
+    const timer = setInterval(check, 30000)
+    return () => { alive = false; clearInterval(timer) }
+  }, [])
   function signOut() { logout(); router.replace('/login') }
   const isActive = item => router.pathname === item.href || (item.href !== '/overview#statistics' && router.pathname.startsWith(item.href + '/')) || (item.href === '/overview#statistics' && router.asPath.includes('#statistics'))
   const mobileItems = NAV.filter(x => ['/overview','/sessions','/servers','/settings'].includes(x.href))
@@ -60,7 +72,7 @@ export default function Layout({ children, title }) {
         <div className="flex min-w-0 items-center gap-3 md:hidden"><Brand compact /></div>
         <div className="hidden min-w-0 md:block"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">Workspace</p><h1 className="truncate text-lg font-bold text-white">{title || 'Dashboard'}</h1></div>
         <div className="ml-auto flex items-center gap-2">
-          <span className="hidden rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 sm:inline-flex"><i className="mr-2 mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" /> API status is checked live</span>
+          <span className={'hidden rounded-full border px-3 py-1.5 text-[11px] font-semibold sm:inline-flex ' + (apiState === 'online' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : apiState === 'offline' ? 'border-rose-500/20 bg-rose-500/10 text-rose-300' : 'border-amber-500/20 bg-amber-500/10 text-amber-200')}><i className={'mr-2 mt-1 h-1.5 w-1.5 rounded-full ' + (apiState === 'online' ? 'bg-emerald-400' : apiState === 'offline' ? 'bg-rose-400' : 'bg-amber-300')} /> API {apiState === 'online' ? 'Online' : apiState === 'offline' ? 'Offline' : 'Checking'}</span>
 
           <a href={CHANNEL} target="_blank" rel="noreferrer" className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5 sm:block">Support ↗</a>
           <button onClick={signOut} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5 md:hidden">Exit</button>
