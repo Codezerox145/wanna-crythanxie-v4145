@@ -40,19 +40,7 @@ export default function Layout({ children, title }) {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [mobileMore, setMobileMore] = useState(false)
-  const [dark, setDark] = useState(true)
-  useEffect(() => {
-    setUser(getUser())
-    const saved = localStorage.getItem('theme') || 'dark'
-    setDark(saved === 'dark')
-    document.documentElement.classList.toggle('dark', saved === 'dark')
-  }, [])
-  function toggleTheme() {
-    const next = !dark
-    setDark(next)
-    document.documentElement.classList.toggle('dark', next)
-    localStorage.setItem('theme', next ? 'dark' : 'light')
-  }
+  useEffect(() => { setUser(getUser()) }, [])
   function signOut() { logout(); router.replace('/login') }
   const isActive = item => router.pathname === item.href || (item.href !== '/overview#statistics' && router.pathname.startsWith(item.href + '/')) || (item.href === '/overview#statistics' && router.asPath.includes('#statistics'))
   const mobileItems = NAV.filter(x => ['/overview','/sessions','/servers','/settings'].includes(x.href))
@@ -73,7 +61,7 @@ export default function Layout({ children, title }) {
         <div className="hidden min-w-0 md:block"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">Workspace</p><h1 className="truncate text-lg font-bold text-white">{title || 'Dashboard'}</h1></div>
         <div className="ml-auto flex items-center gap-2">
           <span className="hidden rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 sm:inline-flex"><i className="mr-2 mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" /> API status is checked live</span>
-          <button onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme" className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-violet-200 hover:bg-white/10">{dark ? '☾' : '☀'}</button>
+
           <a href={CHANNEL} target="_blank" rel="noreferrer" className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5 sm:block">Support ↗</a>
           <button onClick={signOut} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5 md:hidden">Exit</button>
         </div>
@@ -82,7 +70,7 @@ export default function Layout({ children, title }) {
       <footer className="hidden items-center justify-between border-t border-white/[.07] px-8 py-4 text-[11px] text-slate-600 md:flex"><span>© {new Date().getFullYear()} {BOT_NAME}. Built for WhatsApp automation.</span><div className="flex gap-5"><a href={REPO} target="_blank" rel="noreferrer" className="hover:text-violet-300">GitHub</a><a href={CHANNEL} target="_blank" rel="noreferrer" className="hover:text-violet-300">WhatsApp Channel</a><span>THANXIE DEV</span></div></footer>
     </div>
     <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-white/10 bg-[#090d1c]/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl md:hidden">
-      {mobileItems.slice(0,4).map(item => <NavLink key={item.href} item={item} active={isActive(item)} />)}
+      {mobileItems.slice(0,4).map(item => <Link key={item.href} href={item.href} className={'flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl py-2 text-[10px] font-semibold ' + (isActive(item) ? 'text-violet-300' : 'text-slate-500')}><span className="text-lg leading-none">{item.icon}</span><span className="max-w-full truncate">{item.label === 'Dashboard' ? 'Home' : item.label === 'Bot Management' ? 'Bots' : item.label}</span></Link>)}
       <button onClick={() => setMobileMore(v => !v)} className={'flex flex-col items-center justify-center gap-1 rounded-xl py-2 text-[10px] font-semibold ' + (mobileMore ? 'text-violet-300' : 'text-slate-400')}><span className="text-lg">☷</span>More</button>
     </nav>
     {mobileMore && <div className="fixed inset-x-3 bottom-20 z-[60] max-h-[65vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#101629] p-3 shadow-2xl md:hidden"><div className="mb-2 flex items-center justify-between px-2"><p className="text-xs font-bold uppercase tracking-widest text-slate-500">More features</p><button onClick={() => setMobileMore(false)} className="text-slate-400">✕</button></div>{moreItems.map(item => <NavLink key={item.href} item={item} active={isActive(item)} onClick={() => setMobileMore(false)} />)}</div>}
