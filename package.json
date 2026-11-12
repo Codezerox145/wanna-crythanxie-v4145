@@ -6,7 +6,7 @@
   "scripts": {
     "api": "node server/index.js",
     "start": "npm run api",
-    "test": "node --check server/index.js && node test/api-integration.js && node test/run-tests.js"
+    "test": "node --check server/index.js && node --check server/whatsapp.js && node --check lib/db.js && node test/api-integration.js && node test/run-tests.js"
   },
   "engines": {
     "node": ">=20 <23"
