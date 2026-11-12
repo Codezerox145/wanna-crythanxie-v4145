@@ -149,7 +149,7 @@ function ctxQuotedKey(info, remoteJid) {
 }
 
 async function startSession(options) {
-  const { id, phoneNumber, authDir, dataDir, onUpdate } = options;
+  const { id, phoneNumber, authDir, dataDir, onUpdate, onMessage } = options;
   if (active.has(id)) return active.get(id).ready;
   fs.mkdirSync(authDir, { recursive: true });
   fs.mkdirSync(dataDir, { recursive: true });
@@ -166,7 +166,7 @@ async function startSession(options) {
     syncFullHistory: false,
     generateHighQualityLinkPreview: false
   });
-  const entry = { id, sock, authDir, dataDir, phoneNumber, onUpdate, reconnectTimer: null, schedulerTimer: null, closing: false, ready: null };
+  const entry = { id, sock, authDir, dataDir, phoneNumber, onUpdate, onMessage, reconnectTimer: null, schedulerTimer: null, closing: false, ready: null };
   active.set(id, entry);
   sock.ev.on('creds.update', state.saveCreds);
   const dbForSchedules = require('../lib/db');
