@@ -2,21 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; --surface: #ffffff; --canvas: #f5f7fb; }
-:root.dark { color-scheme: dark; --surface: #0f172a; --canvas: #020617; }
-html { scroll-behavior: smooth; }
-body {
-  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
-  font-feature-settings: "ss01" on, "cv11" on;
-}
+:root { color-scheme: dark; background: #070b18; }
+html { scroll-behavior: smooth; background: #070b18; }
+body { @apply bg-[#070b18] text-slate-100 antialiased; font-feature-settings: "ss01" on, "cv11" on; }
 button, input, select, textarea { font: inherit; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
-  @apply outline-none ring-4 ring-indigo-500/20;
-}
-::selection { @apply bg-indigo-200 text-indigo-950; }
-* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
-.dark * { scrollbar-color: #334155 transparent; }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { @apply outline-none ring-2 ring-violet-400 ring-offset-2 ring-offset-[#070b18]; }
+::selection { @apply bg-violet-500/40 text-white; }
+* { scrollbar-width: thin; scrollbar-color: #34304e transparent; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
