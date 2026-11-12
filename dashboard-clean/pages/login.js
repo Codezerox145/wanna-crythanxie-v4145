@@ -46,7 +46,7 @@ export default function Login() {
             {error && <p role="alert" className="rounded-xl border border-rose-400/20 bg-rose-500/10 p-3 text-xs leading-5 text-rose-200">{error}</p>}
             <button type="submit" disabled={loading} className="flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-sm font-bold text-white shadow-lg shadow-violet-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">{loading?'Signing in securely…':'Sign In'} <span>→</span></button>
             <div className="flex items-center gap-3 text-[10px] text-slate-600"><span className="h-px flex-1 bg-white/10" />SECURE ACCOUNT ACCESS<span className="h-px flex-1 bg-white/10" /></div>
-            <p className="text-center text-xs text-slate-400">Don’t have an account? <Link href="/signup" className="ml-1 font-bold text-violet-300 hover:text-violet-200">Sign Up</Link></p>
+            <p className="text-center text-xs text-slate-400">Don’t have an account? <Link href="/signup" className="ml-1 font-bold text-violet-300 hover:text-violet-200">Sign Up</Link></p><p className="mt-3 text-center text-[11px] text-slate-500">Owner access uses this same secure sign-in. Sign in with the email configured in Render OWNER_EMAILS.</p>
           </form>
           <p className="mt-6 text-center text-[10px] text-slate-600">THANXIE DEV · {NAME} · v20.2.2</p>
         </div>
