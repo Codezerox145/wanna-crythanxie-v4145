@@ -4,50 +4,48 @@ import { useRouter } from 'next/router'
 import { getUser, logout } from '../lib/api'
 
 const BOT_NAME = process.env.NEXT_PUBLIC_BOT_NAME || 'WANNA-CRY THANXIEE'
-const BOT_AVATAR = process.env.NEXT_PUBLIC_BOT_AVATAR_URL || 'https://raw.githubusercontent.com/Codezerox145/wanna-crythanxie-v4145/main/bot-avatar.jpg'
-const CHANNEL_LINK = process.env.NEXT_PUBLIC_CHANNEL_LINK || 'https://whatsapp.com/channel/0029VbE9KJvJkK73C7RNvP2z'
-const GITHUB_REPO = process.env.NEXT_PUBLIC_GITHUB_REPO || 'https://github.com/Codezerox145/wanna-crythanxie-v4145'
+const AVATAR = process.env.NEXT_PUBLIC_BOT_AVATAR_URL || 'https://raw.githubusercontent.com/Codezerox145/wanna-crythanxie-v4145/main/bot-avatar.jpg'
+const CHANNEL = process.env.NEXT_PUBLIC_CHANNEL_LINK || 'https://whatsapp.com/channel/0029VbE9KJvJkK73C7RNvP2z'
+const REPO = process.env.NEXT_PUBLIC_GITHUB_REPO || 'https://github.com/Codezerox145/wanna-crythanxie-v4145'
+
 const NAV = [
-  { href: '/overview', label: 'Overview', icon: 'overview' },
-  { href: '/pair', label: 'Connect', icon: 'connect' },
-  { href: '/sessions', label: 'Sessions', icon: 'sessions' },
-  { href: '/servers', label: 'Servers', icon: 'servers' },
-  { href: '/tools', label: 'Advanced tools', icon: 'tools' },
-  { href: '/settings', label: 'Settings', icon: 'settings' }
+  { href: '/overview', label: 'Dashboard', icon: '▦', group: 'Workspace' },
+  { href: '/sessions', label: 'Bot Management', icon: '▣' },
+  { href: '/servers', label: 'Servers', icon: '▤' },
+  { href: '/overview#statistics', label: 'Statistics', icon: '▥' },
+  { href: '/features/advertising', label: 'Advertising', icon: '◈', tag: 'Setup' },
+  { href: '/features/chat', label: 'Chat Centre', icon: '◌' },
+  { href: '/features/polls', label: 'Polls & Channels', icon: '▤' },
+  { href: '/settings', label: 'Bot Settings', icon: '⚙' },
+  { href: '/features/vip', label: 'VIP Centre', icon: '♛' },
+  { href: '/features/media', label: 'Media Tools', icon: '▧' },
+  { href: '/features/help', label: 'FAQ & Help', icon: '?' },
+  { href: '/features/payments', label: 'Payments', icon: '$' },
+  { href: '/features/owner', label: 'Owner Panel', icon: '♜', tag: 'Owner' }
 ]
-
-function NavIcon({ name }) {
-  const shapes = {
-    overview: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
-    connect: <><path d="M10 13.5 8.5 15a4 4 0 0 1-5.7-5.7l3-3a4 4 0 0 1 5.7 0" /><path d="m14 10.5 1.5-1.5a4 4 0 0 1 5.7 5.7l-3 3a4 4 0 0 1-5.7 0" /><path d="m8.5 15 7-7" /></>,
-    sessions: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
-    tools: <><path d="M4 7h16M4 12h16M4 17h16" /><circle cx="8" cy="7" r="1.5" fill="currentColor" stroke="none" /><circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="10" cy="17" r="1.5" fill="currentColor" stroke="none" /></>,
-    servers: <><rect x="3" y="4" width="18" height="6" rx="1.5" /><rect x="3" y="14" width="18" height="6" rx="1.5" /><path d="M7 7h.01M7 17h.01M11 7h7M11 17h7" /></>,
-    settings: <><circle cx="12" cy="12" r="3" /><path d="m19.4 15 .1.1a1.7 1.7 0 0 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a1.7 1.7 0 0 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 0 1-2.4-2.4l.1-.1a1.7 1.7 0 0 0-1.2-2.9H4a1.7 1.7 0 0 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 0 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2V2a1.7 1.7 0 0 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 0 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a1.7 1.7 0 0 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9Z" /></>
-  }
-  return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{shapes[name]}</svg>
-}
-
-function SocialIcon({ type }) {
-  if (type === 'whatsapp') return <img src="https://cdn.simpleicons.org/whatsapp/25D366" alt="" aria-hidden="true" className="h-4 w-4" />
-  return <img src="https://cdn.simpleicons.org/github/FFFFFF" alt="" aria-hidden="true" className="h-4 w-4" />
-}
-
-function BrandMark({ small = false }) {
-  return <div className={(small ? 'h-10 w-10' : 'h-12 w-12') + ' shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-white/10 flex items-center justify-center'}>
-    <img src={BOT_AVATAR} alt={BOT_NAME} className="h-full w-full object-cover" onError={event => { event.currentTarget.style.display = 'none' }} />
+function Brand({ compact = false }) {
+  return <div className="flex min-w-0 items-center gap-3">
+    <img src={AVATAR} alt="" className={compact ? 'h-9 w-9 rounded-xl object-cover' : 'h-11 w-11 rounded-2xl object-cover'} onError={e => { e.currentTarget.style.visibility = 'hidden' }} />
+    <div className="min-w-0"><p className="truncate text-sm font-extrabold tracking-wide text-white">{BOT_NAME}</p><p className="text-[10px] font-bold tracking-[.24em] text-violet-300">PREMIUM CONTROL</p></div>
   </div>
 }
-
+function NavLink({ item, active, onClick }) {
+  return <Link href={item.href} onClick={onClick} className={'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition ' + (active ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-950/30' : 'text-slate-400 hover:bg-white/[.06] hover:text-white')}>
+    <span className={'grid h-8 w-8 shrink-0 place-items-center rounded-lg text-base ' + (active ? 'bg-white/15 text-white' : 'bg-white/[.04] text-violet-300 group-hover:bg-violet-500/15')}>{item.icon}</span>
+    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+    {item.tag && <span className="rounded-md bg-violet-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-200">{item.tag}</span>}
+  </Link>
+}
 export default function Layout({ children, title }) {
   const router = useRouter()
   const [user, setUser] = useState(null)
-  const [dark, setDark] = useState(false)
+  const [mobileMore, setMobileMore] = useState(false)
+  const [dark, setDark] = useState(true)
   useEffect(() => {
     setUser(getUser())
-    const saved = localStorage.getItem('theme') === 'dark'
-    setDark(saved)
-    document.documentElement.classList.toggle('dark', saved)
+    const saved = localStorage.getItem('theme') || 'dark'
+    setDark(saved === 'dark')
+    document.documentElement.classList.toggle('dark', saved === 'dark')
   }, [])
   function toggleTheme() {
     const next = !dark
@@ -55,31 +53,38 @@ export default function Layout({ children, title }) {
     document.documentElement.classList.toggle('dark', next)
     localStorage.setItem('theme', next ? 'dark' : 'light')
   }
-  function handleLogout() { logout(); router.replace('/login') }
-  const active = href => router.pathname === href || router.pathname.startsWith(href + '/')
-  const navLink = item => 'group flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ' + (active(item.href) ? 'bg-white/15 text-white shadow-inner' : 'text-white/60 hover:bg-white/10 hover:text-white')
-  return <div className="min-h-screen bg-[#f5f7fb] text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex">
-    <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-[260px] md:flex-col bg-gradient-to-b from-[#080d1d] via-slate-950 to-indigo-950 p-5 text-white">
-      <div className="mb-10 flex min-w-0 items-center gap-3"><BrandMark /><div className="min-w-0"><p className="truncate text-sm font-bold tracking-wide">{BOT_NAME}</p><p className="mt-1 text-[10px] tracking-[.2em] text-indigo-200/70">PREMIUM CONTROL</p></div></div>
-      <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.22em] text-white/35">Workspace</p>
-      <nav aria-label="Main navigation" className="flex flex-col gap-1">{NAV.map(item => <Link key={item.href} href={item.href} aria-current={active(item.href) ? 'page' : undefined} className={navLink(item)}><span className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-white/75 transition group-hover:bg-white/10"><NavIcon name={item.icon} /></span>{item.label}{active(item.href) && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyan-300" />}</Link>)}</nav>
-      <div className="mt-auto rounded-2xl border border-white/10 bg-white/[.04] p-4"><p className="text-xs font-semibold text-white">Need a hand?</p><p className="mt-1 text-[11px] leading-5 text-white/45">Visit the official channel for project updates and support.</p><a href={CHANNEL_LINK} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-cyan-200 hover:text-white"><SocialIcon type="whatsapp" /> Official WhatsApp channel</a></div>
-      <div className="mt-4 space-y-3 border-t border-white/10 pt-4 text-xs text-white/50"><a href={GITHUB_REPO} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white"><SocialIcon type="github" /> GitHub repository</a><button onClick={handleLogout} className="block hover:text-white">↩ Log out</button></div>
+  function signOut() { logout(); router.replace('/login') }
+  const isActive = item => router.pathname === item.href || (item.href !== '/overview#statistics' && router.pathname.startsWith(item.href + '/')) || (item.href === '/overview#statistics' && router.asPath.includes('#statistics'))
+  const mobileItems = NAV.filter(x => ['/overview','/sessions','/servers','/settings'].includes(x.href))
+  const moreItems = NAV.filter(x => !mobileItems.includes(x))
+  return <div className="min-h-screen bg-[#070b18] text-slate-100 md:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[252px] flex-col border-r border-white/[.07] bg-[#090d1c] px-4 py-5 md:flex">
+      <div className="mb-8 px-2"><Brand /></div>
+      <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-slate-600">Main menu</p>
+      <nav className="flex-1 space-y-1 overflow-y-auto">{NAV.map(item => <NavLink key={item.href} item={item} active={isActive(item)} />)}</nav>
+      <div className="mt-4 rounded-2xl border border-white/[.08] bg-white/[.035] p-3">
+        <div className="flex items-center gap-2"><div className="grid h-8 w-8 place-items-center rounded-xl bg-violet-500/15 text-violet-300">{user?.email?.[0]?.toUpperCase() || 'U'}</div><div className="min-w-0"><p className="truncate text-xs font-bold text-white">{user?.email || 'Your account'}</p><p className="text-[10px] text-slate-500">Workspace account</p></div></div>
+        <button onClick={signOut} className="mt-3 w-full rounded-lg border border-white/10 px-3 py-2 text-left text-xs font-semibold text-slate-400 hover:bg-white/5 hover:text-white">↪ Sign out</button>
+      </div>
     </aside>
-    <div className="min-w-0 flex-1 md:ml-[260px]">
-      <header className="sticky top-0 z-30 flex min-h-[76px] items-center justify-between gap-3 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-3"><div className="md:hidden"><BrandMark small /></div><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-indigo-600">Workspace</p><h1 className="truncate text-base font-bold tracking-tight sm:text-lg">{title || 'Dashboard'}</h1></div></div>
-        <div className="flex shrink-0 items-center gap-2"><button onClick={toggleTheme} className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" title="Toggle theme" aria-label="Toggle theme">{dark ? '☀' : '☾'}</button><div className="hidden min-w-0 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800 sm:flex"><div className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-600 text-xs font-bold text-white">{user?.email?.charAt(0)?.toUpperCase() || '?'}</div><span className="max-w-[180px] truncate text-xs font-semibold text-slate-600 dark:text-slate-300">{user?.email || 'Account'}</span></div></div>
+    <div className="min-w-0 flex-1 md:ml-[252px]">
+      <header className="sticky top-0 z-30 flex min-h-[70px] items-center justify-between gap-3 border-b border-white/[.07] bg-[#090d1c]/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3 md:hidden"><Brand compact /></div>
+        <div className="hidden min-w-0 md:block"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">Workspace</p><h1 className="truncate text-lg font-bold text-white">{title || 'Dashboard'}</h1></div>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 sm:inline-flex"><i className="mr-2 mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" /> API status is checked live</span>
+          <button onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme" className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-violet-200 hover:bg-white/10">{dark ? '☾' : '☀'}</button>
+          <a href={CHANNEL} target="_blank" rel="noreferrer" className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5 sm:block">Support ↗</a>
+          <button onClick={signOut} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5 md:hidden">Exit</button>
+        </div>
       </header>
-      <nav aria-label="Mobile navigation" className="sticky top-[76px] z-20 grid grid-cols-6 gap-1 border-b border-slate-200/80 bg-white/95 px-2 py-2 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 md:hidden">{NAV.map(item => <Link key={item.href} href={item.href} aria-current={active(item.href) ? 'page' : undefined} className={'flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold transition ' + (active(item.href) ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400')}><NavIcon name={item.icon} /><span className="truncate">{item.label}</span></Link>)}</nav>
-      <main className="mx-auto min-h-[calc(100vh-160px)] w-full min-w-0 max-w-[1600px] p-4 sm:p-6 lg:p-8">
-        <section aria-label="Support this open-source project" className="mb-5 flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 p-4 dark:border-indigo-900/60 dark:from-indigo-950/40 dark:via-slate-900 dark:to-violet-950/30 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0"><p className="text-sm font-bold text-slate-900 dark:text-white">Enjoying WANNA-CRY THANXIEE?</p><p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Help more people discover it — fork the source and star the GitHub repository.</p></div>
-          <div className="flex shrink-0 flex-wrap gap-2"><a href={`${GITHUB_REPO}/fork`} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-300">⑂ Fork project</a><a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-700">★ Star on GitHub</a></div>
-        </section>
-        {children}
-      </main>
-      <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-slate-200/80 px-4 py-5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400"><a href={CHANNEL_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-indigo-600"><SocialIcon type="whatsapp" /> Official WhatsApp</a><a href={GITHUB_REPO} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-indigo-600"><SocialIcon type="github" /> GitHub</a><button onClick={handleLogout} className="hover:text-indigo-600">Log out</button></footer>
+      <main className="mx-auto min-h-[calc(100vh-70px)] w-full max-w-[1600px] px-4 pb-28 pt-5 sm:px-6 sm:pt-7 lg:px-8 md:pb-8">{children}</main>
+      <footer className="hidden items-center justify-between border-t border-white/[.07] px-8 py-4 text-[11px] text-slate-600 md:flex"><span>© {new Date().getFullYear()} {BOT_NAME}. Built for WhatsApp automation.</span><div className="flex gap-5"><a href={REPO} target="_blank" rel="noreferrer" className="hover:text-violet-300">GitHub</a><a href={CHANNEL} target="_blank" rel="noreferrer" className="hover:text-violet-300">WhatsApp Channel</a><span>THANXIE DEV</span></div></footer>
     </div>
+    <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-white/10 bg-[#090d1c]/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl md:hidden">
+      {mobileItems.slice(0,4).map(item => <NavLink key={item.href} item={item} active={isActive(item)} />)}
+      <button onClick={() => setMobileMore(v => !v)} className={'flex flex-col items-center justify-center gap-1 rounded-xl py-2 text-[10px] font-semibold ' + (mobileMore ? 'text-violet-300' : 'text-slate-400')}><span className="text-lg">☷</span>More</button>
+    </nav>
+    {mobileMore && <div className="fixed inset-x-3 bottom-20 z-[60] max-h-[65vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#101629] p-3 shadow-2xl md:hidden"><div className="mb-2 flex items-center justify-between px-2"><p className="text-xs font-bold uppercase tracking-widest text-slate-500">More features</p><button onClick={() => setMobileMore(false)} className="text-slate-400">✕</button></div>{moreItems.map(item => <NavLink key={item.href} item={item} active={isActive(item)} onClick={() => setMobileMore(false)} />)}</div>}
   </div>
 }
