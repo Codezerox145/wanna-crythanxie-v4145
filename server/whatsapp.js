@@ -155,7 +155,13 @@ async function startSession(options) {
     await db.runWithDataDir(dataDir, async () => {
       let groupName = 'the group';
       try { groupName = (await sock.groupMetadata(update.id)).subject || groupName; } catch (_) {}
-      const settings = welcome.getGroupSettings(update.id);\n      if (update.action === 'add' && !settings.welcomeOn) return;\n      if (update.action === 'remove' && !settings.goodbyeOn) return;\n      for (const participant of update.participants || []) {\n        const payload = update.action === 'add'\n          ? welcome.renderWelcome(update.id, groupName, participant)\n          : welcome.renderGoodbye(update.id, groupName, participant);
+      const settings = welcome.getGroupSettings(update.id);
+      if (update.action === 'add' && !settings.welcomeOn) return;
+      if (update.action === 'remove' && !settings.goodbyeOn) return;
+      for (const participant of update.participants || []) {
+        const payload = update.action === 'add'
+          ? welcome.renderWelcome(update.id, groupName, participant)
+          : welcome.renderGoodbye(update.id, groupName, participant);
         try { await sock.sendMessage(update.id, payload); } catch (error) { logger.warn({ err: error }, 'Welcome/goodbye send failed'); }
       }
     });
