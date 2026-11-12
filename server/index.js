@@ -39,8 +39,23 @@ function writeStore(name, value) {
   fs.writeFileSync(temp, JSON.stringify(value, null, 2), { mode: 0o600 });
   fs.renameSync(temp, file);
 }
+function isOwnerEmail(email) {
+  const owners = (process.env.OWNER_EMAILS || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+  return owners.includes(String(email || '').trim().toLowerCase());
+}
 function safeUser(user) {
-  return { id: user.id, email: user.email, created_at: user.created_at };
+  return { id: user.id, email: user.email, role: isOwnerEmail(user.email) ? 'owner' : 'user', is_owner: isOwnerEmail(user.email), created_at: user.created_at };
+}
+function ownerOnly(req, res, next) {
+  if (!isOwnerEmail(req.user?.email)) return res.status(403).json({ error: 'Owner access is restricted to the configured OWNER_EMAILS account.' });
+  next();
+}
+function serverRegistry() {
+  try {
+    const value = JSON.parse(process.env.SERVER_REGISTRY_JSON || '[]');
+    if (!Array.isArray(value)) return [];
+    return value.filter(item => item && typeof item === 'object' && typeof item.id === 'string' && typeof item.name === 'string').slice(0, 243);
+  } catch (_) { return []; }
 }
 function issueToken(user) {
   return jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, {
@@ -229,14 +244,109 @@ app.get('/analytics', auth, (req, res) => {
   const sessions = readStore('sessions', []).filter(item => item.user_id === req.user.id);
   res.json({ sessions_total: sessions.length, sessions_connected: sessions.filter(s => s.status === 'online').length });
 });
-app.get('/servers', auth, (_req, res) => res.json({ total: 1, verified: 1, servers: [{
-  id: 'current-api', name: 'WhatsApp API + Baileys worker', provider: 'Render',
-  region: process.env.RENDER_REGION || 'unknown', country: 'Unknown', location: 'Render',
-  cpu: 'Shared', ram: 'Plan dependent', storage: 'Persistent disk recommended',
-  operating_system: 'Linux', status: 'online',
-  note: whatsapp.runningCount() + ' Baileys worker(s) active in this API instance.'
-}]}));
+app.get('/servers', auth, (_req, res) => {
+  const configured = serverRegistry().map(item => ({ ...item, status: item.status || 'unverified', verified: false }));
+  const current = {
+    id: 'current-api', name: 'WhatsApp API + Baileys worker', provider: 'Render',
+    region: process.env.RENDER_REGION || 'managed', country: 'Unknown', location: 'Render managed host',
+    cpu: 'Shared', ram: 'Plan dependent', storage: 'Persistent disk recommended',
+    operating_system: os.type(), status: 'online', verified: true,
+    note: whatsapp.runningCount() + ' Baileys worker(s) active in this API instance.'
+  };
+  const servers = [current, ...configured.filter(item => item.id !== current.id)];
+  res.json({ total: servers.length, verified: 1, servers });
+});
 
+// Dashboard Chat Centre: messages are persisted per WhatsApp session owner.
+app.get('/chat/conversations', auth, (req, res) => {
+  const sessions = readStore('sessions', []).filter(item => item.user_id === req.user.id);
+  const allowed = new Set(sessions.map(item => item.id));
+  const messages = readStore('messages', []).filter(item => allowed.has(item.session_id));
+  const map = new Map();
+  for (const item of messages) {
+    const key = item.session_id + ':' + item.chat_jid;
+    const prev = map.get(key);
+    if (!prev || prev.timestamp < item.timestamp) map.set(key, { session_id: item.session_id, chat_jid: item.chat_jid, last_message: item.text, timestamp: item.timestamp, direction: item.direction });
+  }
+  res.json({ conversations: [...map.values()].sort((a,b) => b.timestamp-a.timestamp) });
+});
+app.get('/chat/messages', auth, (req, res) => {
+  const sessionId = String(req.query.sessionId || '');
+  const chatJid = String(req.query.chatJid || '');
+  const owned = readStore('sessions', []).some(item => item.id === sessionId && item.user_id === req.user.id);
+  if (!owned || !chatJid) return res.status(404).json({ error: 'Conversation not found.' });
+  const messages = readStore('messages', []).filter(item => item.session_id === sessionId && item.chat_jid === chatJid).slice(-200);
+  res.json({ messages });
+});
+app.post('/chat/send', auth, async (req, res) => {
+  const sessionId = String(req.body?.sessionId || '');
+  const chatJid = String(req.body?.chatJid || '');
+  const message = String(req.body?.message || '').trim().slice(0, 4000);
+  const owned = readStore('sessions', []).some(item => item.id === sessionId && item.user_id === req.user.id);
+  if (!owned || !chatJid || !/^[0-9]+(?:-[0-9]+)?@(s\.whatsapp\.net|g\.us)$/.test(chatJid)) return res.status(400).json({ error: 'Choose a valid conversation.' });
+  if (!message) return res.status(400).json({ error: 'Enter a message before sending.' });
+  try {
+    await whatsapp.sendText(sessionId, chatJid, message);
+    const messages = readStore('messages', []);
+    messages.push({ id: crypto.randomUUID(), session_id: sessionId, chat_jid: chatJid, text: message, direction: 'outbound', timestamp: Date.now() });
+    writeStore('messages', messages.slice(-10000));
+    res.json({ ok: true });
+  } catch (error) { res.status(503).json({ error: error.message || 'WhatsApp session is not connected.' }); }
+});
+app.post('/supporter/verify', auth, async (req, res) => {
+  const username = String(req.body?.githubUsername || '').trim().replace(/^@/, '');
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(username)) return res.status(400).json({ error: 'Enter a valid GitHub username.' });
+  const owner = 'Codezerox145';
+  const repo = 'wanna-crythanxie-v4145';
+  const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'WANNA-CRY-THANXIEE' };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = 'Bearer ' + process.env.GITHUB_TOKEN;
+  try {
+    const [star, fork] = await Promise.all([
+      fetch('https://api.github.com/users/' + encodeURIComponent(username) + '/starred/' + owner + '/' + repo, { headers }),
+      fetch('https://api.github.com/repos/' + encodeURIComponent(username) + '/' + repo, { headers })
+    ]);
+    if (star.status === 403 || star.status === 429 || fork.status === 403 || fork.status === 429) return res.status(503).json({ error: 'GitHub verification is rate limited. Please try again later.' });
+    const forkData = fork.ok ? await fork.json() : null;
+    const isStarred = star.status === 204;
+    const isForked = Boolean(forkData?.fork && forkData?.parent?.full_name?.toLowerCase() === (owner + '/' + repo).toLowerCase());
+    if (!isStarred || !isForked) return res.status(403).json({ error: 'Support verification incomplete. Your GitHub account must both STAR and FORK the official repository before an OTP is issued.', starred: isStarred, forked: isForked, repository: 'https://github.com/' + owner + '/' + repo });
+    const code = String(crypto.randomInt(100000, 1000000));
+    const records = readStore('supporter_otps', []).filter(item => item.user_id !== req.user.id || item.used || item.expires_at > Date.now());
+    records.push({ user_id: req.user.id, github_username: username, code_hash: crypto.createHash('sha256').update(code).digest('hex'), expires_at: Date.now() + 10 * 60 * 1000, used: false });
+    writeStore('supporter_otps', records.slice(-5000));
+    return res.json({ ok: true, otp: code, expires_in_seconds: 600, message: 'GitHub star and fork verified. This one-time code expires in 10 minutes. Send it to the owner to request a VIP unlock key.' });
+  } catch (_) { return res.status(502).json({ error: 'Could not verify your GitHub activity right now. Please retry later.' }); }
+});
+app.post('/supporter/redeem-otp', auth, (req, res) => {
+  const code = String(req.body?.otp || '').trim();
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Enter the six-digit OTP.' });
+  const records = readStore('supporter_otps', []);
+  const record = [...records].reverse().find(item => item.user_id === req.user.id && !item.used && item.expires_at > Date.now());
+  const hash = crypto.createHash('sha256').update(code).digest('hex');
+  if (!record || record.code_hash !== hash) return res.status(400).json({ error: 'OTP is invalid, expired or already used. Verify your GitHub star and fork again.' });
+  record.used = true; record.used_at = Date.now(); writeStore('supporter_otps', records);
+  return res.json({ ok: true, message: 'Supporter OTP accepted. Contact the owner with your GitHub username to request a VIP unlock key.' });
+});
+app.get('/owner/overview', auth, ownerOnly, (_req, res) => {
+  const users = readStore('users', []);
+  const sessions = readStore('sessions', []);
+  const otp = readStore('supporter_otps', []);
+  res.json({
+    users_total: users.length,
+    owner_accounts: users.filter(user => isOwnerEmail(user.email)).length,
+    sessions_total: sessions.length,
+    sessions_online: sessions.filter(item => item.status === 'online').length,
+    supporter_verifications: otp.filter(item => item.used).length,
+    pending_otps: otp.filter(item => !item.used && item.expires_at > Date.now()).length,
+    worker_count: whatsapp.runningCount(),
+    api_uptime_seconds: Math.floor(process.uptime()),
+    environment: { server_registry_configured: serverRegistry().length > 0, owner_emails_configured: (process.env.OWNER_EMAILS || '').split(',').filter(Boolean).length > 0, github_verification: true, email_delivery_configured: Boolean(process.env.RESEND_API_KEY && process.env.OWNER_EMAILS) }
+  });
+});
+app.get('/owner/users', auth, ownerOnly, (_req, res) => {
+  const users = readStore('users', []).map(user => ({ id: user.id, email: user.email, role: isOwnerEmail(user.email) ? 'owner' : 'user', created_at: user.created_at }));
+  res.json({ users });
+});
 app.use((error, _req, res, _next) => {
   console.error('API request error:', error.message);
   res.status(500).json({ error: 'An unexpected API error occurred.' });
