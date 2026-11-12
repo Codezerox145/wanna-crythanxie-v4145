@@ -74,6 +74,11 @@ function updateSession(id, patch) {
   writeStore('sessions', sessions);
   return sessions[index];
 }
+function recordMessage(message) {
+  const messages = readStore('messages', []);
+  messages.push(message);
+  writeStore('messages', messages.slice(-10000));
+}
 function sessionPaths(id) {
   const base = path.join(SESSION_DIR, id);
   return { authDir: path.join(base, 'auth'), dataDir: path.join(base, 'bot-data') };
@@ -179,7 +184,8 @@ app.post('/sessions', auth, async (req, res) => {
   try {
     const result = await whatsapp.startSession({
       id, phoneNumber, ...paths,
-      onUpdate: patch => updateSession(id, patch)
+      onUpdate: patch => updateSession(id, patch),
+      onMessage: message => recordMessage(message)
     });
     const latest = readStore('sessions', []).find(item => item.id === id) || session;
     return res.status(201).json({ sessionId: id, ...publicSession({ ...latest, ...result }) });
@@ -209,7 +215,8 @@ app.post('/sessions/:id/restart', auth, async (req, res) => {
     updateSession(session.id, { status: 'restarting', error: null });
     const result = await whatsapp.restartSession({
       id: session.id, phoneNumber: session.phone_number, ...paths,
-      onUpdate: patch => updateSession(session.id, patch)
+      onUpdate: patch => updateSession(session.id, patch),
+      onMessage: message => recordMessage(message)
     });
     return res.json({ ok: true, ...result, session: publicSession(updateSession(session.id, { status: result.status || 'connecting', pairing_code: result.pairing_code || null }) || session) });
   } catch (error) {
@@ -361,7 +368,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     if (!fs.existsSync(path.join(paths.authDir, 'creds.json'))) continue;
     whatsapp.startSession({
       id: session.id, phoneNumber: session.phone_number, ...paths,
-      onUpdate: patch => updateSession(session.id, patch)
+      onUpdate: patch => updateSession(session.id, patch),
+      onMessage: message => recordMessage(message)
     }).catch(error => updateSession(session.id, { status: 'error', error: String(error.message || 'Reconnect failed.').slice(0, 200) }));
   }
 });
