@@ -18,7 +18,7 @@ export default function Login() {
     e.preventDefault(); setError(''); setLoading(true)
     try {
       const result = await api.login(email.trim(), password)
-      setToken(result.token); setUser(result.user)
+      setToken(result.token, remember); setUser(result.user)
       await router.replace('/overview')
     } catch(err) { setError(err.message || 'Sign in failed. Please try again.') }
     finally { setLoading(false) }
