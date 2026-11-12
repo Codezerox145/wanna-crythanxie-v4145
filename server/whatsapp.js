@@ -210,10 +210,20 @@ async function stopSession(id) {
   return true;
 }
 
+async function logoutSession(id) {
+  const entry = active.get(id);
+  if (!entry) return false;
+  entry.closing = true;
+  clearTimeout(entry.reconnectTimer);
+  clearInterval(entry.schedulerTimer);
+  active.delete(id);
+  try { await entry.sock.logout(); }
+  catch (_) { try { entry.sock.end(new Error('Session unlinked by account owner')); } catch (_) {} }
+  return true;
+}
+
 async function removeSession(id) {
-  await stopSession(id);
-  const entryPath = path.join(path.resolve(__dirname, '..'), 'unused');
-  void entryPath;
+  return logoutSession(id);
 }
 
 async function restartSession(options) {
@@ -224,4 +234,4 @@ async function restartSession(options) {
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, stopSession, removeSession, restartSession, isRunning, runningCount };
+module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, isRunning, runningCount };
