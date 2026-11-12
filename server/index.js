@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
 const whatsapp = require('./whatsapp');
 
 const app = express();
@@ -202,14 +203,28 @@ app.post('/sessions/:id/restart', auth, async (req, res) => {
   }
 });
 
-app.get('/runtime', auth, (_req, res) => res.json({
-  max_sessions_per_account: Math.max(1, Number(process.env.MAX_SESSIONS_PER_USER || 3)),
-  bot_name: process.env.BOT_NAME || 'WANNA-CRY THANXIEE',
-  prefix: process.env.BOT_PREFIX || '.',
-  uptime_seconds: Math.floor(process.uptime()),
-  worker_connected: whatsapp.runningCount() > 0,
-  active_workers: whatsapp.runningCount()
-}));
+app.get('/runtime', auth, (_req, res) => {
+  const memory = process.memoryUsage();
+  res.json({
+    platform: process.env.RENDER ? 'Render' : process.platform,
+    node: process.version,
+    operating_system: os.type() + ' ' + os.release(),
+    architecture: os.arch(),
+    cpu_cores: os.cpus().length,
+    load_average: os.loadavg(),
+    uptime_seconds: Math.floor(process.uptime()),
+    memory: { rss: memory.rss, heapTotal: memory.heapTotal, heapUsed: memory.heapUsed, external: memory.external },
+    total_memory_bytes: os.totalmem(),
+    free_memory_bytes: os.freemem(),
+    max_sessions_per_account: Math.max(1, Number(process.env.MAX_SESSIONS_PER_USER || 3)),
+    bot_name: process.env.BOT_NAME || 'WANNA-CRY THANXIEE',
+    prefix: process.env.BOT_PREFIX || '.',
+    worker_connected: whatsapp.runningCount() > 0,
+    active_workers: whatsapp.runningCount(),
+    active_bot_processes: whatsapp.runningCount(),
+    configured_server_count: 1
+  });
+});
 app.get('/analytics', auth, (req, res) => {
   const sessions = readStore('sessions', []).filter(item => item.user_id === req.user.id);
   res.json({ sessions_total: sessions.length, sessions_connected: sessions.filter(s => s.status === 'online').length });
