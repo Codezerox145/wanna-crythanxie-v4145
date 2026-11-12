@@ -3,12 +3,13 @@ const REQUEST_TIMEOUT_MS = 60000
 
 function getToken() {
   if (typeof window === 'undefined') return null
-  return localStorage.getItem('token')
+  return localStorage.getItem('token') || sessionStorage.getItem('token')
 }
-export function setToken(token) {
+export function setToken(token, remember = true) {
   if (typeof window === 'undefined') return
-  if (token) localStorage.setItem('token', token)
-  else localStorage.removeItem('token')
+  localStorage.removeItem('token')
+  sessionStorage.removeItem('token')
+  if (token) (remember ? localStorage : sessionStorage).setItem('token', token)
 }
 export function getUser() {
   if (typeof window === 'undefined' || !getToken()) return null
@@ -84,4 +85,4 @@ export const api = {
   analytics: () => request('/analytics'),
   servers: () => request('/servers'),
 }
-export function logout() { setToken(null); setUser(null) }
+export function logout() { setToken(null); setUser(null); if (typeof window !== 'undefined') { sessionStorage.removeItem('token'); sessionStorage.removeItem('user') } }
