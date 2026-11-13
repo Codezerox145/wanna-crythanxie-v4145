@@ -244,6 +244,8 @@ async function startSession(options) {
 
   entry.ready = (async () => {
     if (!state.state.creds.registered && phoneNumber) {
+      // Allow the Baileys websocket handshake to settle before requesting a pairing code.
+      await new Promise(resolve => setTimeout(resolve, 3000));
       const code = await sock.requestPairingCode(phoneNumber);
       onUpdate?.({ status: 'pairing', pairing_code: code, last_seen_at: new Date().toISOString(), error: null });
       return { pairing_code: code, status: 'pairing' };
