@@ -126,21 +126,25 @@ async function processIncoming(sock, session, message) {
         return;
       }
     }
-    if (!rawText.trim()) return;
+    const messageType = getContentType(normalized);
+    const mediaLabels = { imageMessage: '[Image]', videoMessage: '[Video]', documentMessage: '[Document]', audioMessage: '[Audio]', stickerMessage: '[Sticker]', locationMessage: '[Location]', contactMessage: '[Contact]' };
+    const inboxText = rawText.trim() || mediaLabels[messageType] || '';
+    if (!inboxText) return;
 
     // Feed the authenticated dashboard inbox. WhatsApp transport encryption remains
-    // provided by WhatsApp; this platform cache is not an independent E2E vault.
+    // provided by WhatsApp; this platform cache is encrypted at rest, not an independent E2E vault.
     session.onMessage?.({
       id: String(msg.key?.id || crypto.randomUUID()),
       session_id: session.id,
       chat_jid: remoteJid,
       sender_jid: sender,
-      text: rawText.slice(0, 4000),
+      text: inboxText.slice(0, 4000),
       direction: 'inbound',
       timestamp: Number(msg.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000
     });
+    if (!rawText.trim()) return;
 
-    const contextInfo = normalized[getContentType(normalized)]?.contextInfo || {};
+    const contextInfo = normalized[messageType]?.contextInfo || {};
     const quotedMessage = contextInfo.quotedMessage || null;
     const quotedText = quotedMessage ? textFromMessage(quotedMessage) : null;
     const ctx = {
