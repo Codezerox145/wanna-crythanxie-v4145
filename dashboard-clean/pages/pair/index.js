@@ -18,29 +18,6 @@ const REGIONS = [
 ]
 const GITHUB_REPO = (process.env.NEXT_PUBLIC_GITHUB_REPO || 'https://github.com/Codezerox145/wanna-crythanxie-v4145').replace(/\/$/, '')
 
-function playCongratulations() {
-  if (typeof window === 'undefined') return
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext
-    if (!AudioContext) return
-    const context = new AudioContext()
-    const notes = [523.25, 659.25, 783.99, 1046.5]
-    notes.forEach((frequency, index) => {
-      const oscillator = context.createOscillator()
-      const gain = context.createGain()
-      oscillator.type = 'sine'
-      oscillator.frequency.value = frequency
-      gain.gain.setValueAtTime(0.0001, context.currentTime + index * 0.13)
-      gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + index * 0.13 + 0.025)
-      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + index * 0.13 + 0.22)
-      oscillator.connect(gain); gain.connect(context.destination)
-      oscillator.start(context.currentTime + index * 0.13)
-      oscillator.stop(context.currentTime + index * 0.13 + 0.24)
-    })
-    setTimeout(() => context.close().catch(() => {}), 1100)
-  } catch (_) { /* Sound is an enhancement; pairing remains available. */ }
-}
-
 export default function Pair() {
   const user = useAuthGuard()
   const router = useRouter()
@@ -126,7 +103,7 @@ export default function Pair() {
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-100 text-3xl dark:bg-indigo-900/40">⭐</div>
         <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-[.2em] text-indigo-600">PROJECT SUPPORT</p>
         <h2 id="community-gate-title" className="mt-2 text-center text-2xl font-black">GitHub support</h2>
-        <p className="mt-2 text-center text-sm leading-6 text-slate-500 dark:text-slate-400">Complete both GitHub actions to continue.</p>
+        <p className="mt-2 text-center text-sm leading-6 text-slate-500 dark:text-slate-400"></p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <button type="button" onClick={() => openCommunityLink('fork')} className="rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-400 dark:border-slate-700"><span className="flex items-center justify-between"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true"><path d="M7 3h3v7.2l7.1-4.1 1.5 2.6-7.1 4.1 7.1 4.1-1.5 2.6L10 15.4V22H7V3Z"/></svg><span className="text-xs font-bold">Step 1</span></span><span className="mt-2 block font-bold">Fork repository</span><span className="mt-1 block text-xs text-slate-500">Opens GitHub's Fork page in a new tab.</span></button>
           <button type="button" onClick={() => openCommunityLink('star')} className="rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-400 dark:border-slate-700"><span className="flex items-center justify-between"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true"><path d="m12 2 3.1 6.3 7 1-5.1 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5.1-4.9 7-1L12 2Z"/></svg><span className="text-xs font-bold">Step 2</span></span><span className="mt-2 block font-bold">Star repository</span><span className="mt-1 block text-xs text-slate-500">Opens the original repository so you can star it.</span></button>
