@@ -393,8 +393,9 @@ app.post('/supporter/verify', auth, async (req, res) => {
     const targetRepo = (owner + '/' + repo).toLowerCase();
     const isStarred = starredRepos.some(item => String(item.full_name || '').toLowerCase() === targetRepo);
     const isForked = ownedRepos.some(item => item.fork && String(item.parent?.full_name || '').toLowerCase() === targetRepo);
-    if (!isStarred || !isForked) return res.status(403).json({ error: 'Support verification incomplete. Your GitHub account must both STAR and FORK the official repository before an OTP is issued.', starred: isStarred, forked: isForked, repository: 'https://github.com/' + owner + '/' + repo });
-        const code = String(crypto.randomInt(100000, 1000000));
+    if (!isStarred || !isForked) return res.status(403).json({ error: 'GitHub verification incomplete. Both a star and a fork of the official repository are required.', starred: isStarred, forked: isForked, repository: 'https://github.com/' + owner + '/' + repo });
+    if (req.body?.issueOtp === false) return res.json({ ok: true, starred: true, forked: true, github_username: username, message: 'GitHub star and fork verified.' });
+    const code = String(crypto.randomInt(100000, 1000000));
     const records = readStore('supporter_otps', []).filter(item => item.user_id !== req.user.id || item.used || item.expires_at > Date.now());
     records.push({ user_id: req.user.id, github_username: username, code_hash: crypto.createHash('sha256').update(code).digest('hex'), expires_at: Date.now() + 10 * 60 * 1000, used: false });
     writeStore('supporter_otps', records.slice(-5000));
