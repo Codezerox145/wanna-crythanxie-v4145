@@ -42,6 +42,13 @@ function getAvatar(db) {
   try { return fs.readFileSync(avatarPath); } catch (_) { return null; }
 }
 
+function ensureBrandedText(value) {
+  const text = String(value || '');
+  if (!text.trim() || text.includes('┆𖤍╭')) return text;
+  const { brandedReply } = require('../lib/brand');
+  return brandedReply('BOT RESPONSE', text.split(/\\r?\\n/), { marker: '✧' });
+}
+
 async function sendCommandResult(sock, jid, result, db) {
   if (result == null) return;
   const avatar = getAvatar(db);
@@ -57,10 +64,10 @@ async function sendCommandResult(sock, jid, result, db) {
     }
     return;
   }
-  if (typeof result === 'string') return sock.sendMessage(jid, { text: result });
-  if (result.plainText) return sock.sendMessage(jid, { text: String(result.plainText) });
+  if (typeof result === 'string') return sock.sendMessage(jid, { text: ensureBrandedText(result) });
+  if (result.plainText) return sock.sendMessage(jid, { text: ensureBrandedText(result.plainText) });
   if (result.text) {
-    const payload = { text: String(result.text) };
+    const payload = { text: ensureBrandedText(result.text) };
     if (Array.isArray(result.mentions)) payload.mentions = result.mentions;
     return sock.sendMessage(jid, payload);
   }
@@ -287,4 +294,4 @@ async function sendText(id, jid, text) {
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, sendText, isRunning, runningCount };
+module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, sendText, isRunning, runningCount, ensureBrandedText };
