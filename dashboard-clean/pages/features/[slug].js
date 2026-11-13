@@ -35,7 +35,7 @@ export default function FeaturePage() {
   const commands = useMemo(() => (feature?.commands || []).map(value => value.trim()).filter(value => value.toLowerCase().includes(query.toLowerCase())), [feature, query])
   if (!user || !router.isReady) return null
   if (!feature) return <Layout title="Feature not found"><div className="rounded-2xl border border-white/10 bg-[#10182b] p-6"><h2 className="text-lg font-bold">Feature not found</h2><Link href="/overview" className="mt-4 inline-block text-sm text-violet-300">Return to dashboard</Link></div></Layout>
-  const available = feature.status.includes('available') || feature.status.includes('commands') || feature.status.includes('Supporter verification')
+  const available = feature.status.toLowerCase().includes('available') || feature.status.toLowerCase().includes('commands') || feature.status.includes('Supporter verification')
   async function verifySupport() {
     setVerifying(true); setNotice(''); setOtp('')
     try { const result = await api.verifySupporter(githubUsername.trim()); setOtp(result.otp); setNotice(result.message) }
