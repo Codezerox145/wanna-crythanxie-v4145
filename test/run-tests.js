@@ -140,7 +140,7 @@ async function main() {
     const out = brandedReply('TEST', ['line one']);
     assert(out.includes('TEST'));
     assert(out.includes('line one'));
-    assert(out.includes('whatsapp.com/channel'));
+    assert(out.includes('Powered by THANXIEE DEV'));
   });
 
   check('db.js read/write roundtrip', () => {
