@@ -37,10 +37,10 @@ function resolveApiUrl(path) {
   if (!API_BASE) throw new Error('Dashboard API is not configured. Add NEXT_PUBLIC_API_BASE to your dashboard host environment using the public HTTPS URL of your API service, then rebuild/redeploy.')
   let base
   try { base = new URL(API_BASE) } catch {
-    throw new Error('The API address is invalid. Set NEXT_PUBLIC_API_BASE to the full public API URL, including https://.')
+    throw new Error('The API address is invalid. Set NEXT_PUBLIC_API_BASE to the full public HTTPS API URL.')
   }
   if (!['http:', 'https:'].includes(base.protocol) || !base.host) throw new Error('The API address must use http:// or https:// and include a hostname.')
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.protocol !== 'https:') throw new Error('The dashboard is using HTTPS but the API address is not. Set NEXT_PUBLIC_API_BASE to your HTTPS Render URL.')
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.protocol !== 'https:') throw new Error('The dashboard is using HTTPS but the API address is not. Set NEXT_PUBLIC_API_BASE to the API host's public HTTPS URL.')
   return new URL(path, base.origin + '/')
 }
 
