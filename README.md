@@ -29,13 +29,13 @@
       <td>Current service is on the Free plan (ephemeral filesystem). Persistent disks require a paid service plan.</td>
     </tr>
     <tr>
-      <td><img src="https://cdn.simpleicons.org/vercel/FFFFFF" width="22" height="22" alt="Vercel" /> <strong>Vercel</strong></td>
+      <td><img src="https://cdn.simpleicons.org/vercel/000000" width="22" height="22" alt="Vercel" /> <strong>Vercel</strong></td>
       <td>Next.js web dashboard</td>
       <td><a href="https://vercel.com/dashboard">Vercel dashboard</a> · <a href="https://vercel.com/new">Deploy to Vercel</a></td>
       <td>Dashboard hosting only; WhatsApp auth files remain on the API host.</td>
     </tr>
     <tr>
-      <td><img src="https://cdn.simpleicons.org/koyeb/FFFFFF" width="22" height="22" alt="Koyeb" /> <strong>Koyeb</strong></td>
+      <td><img src="https://cdn.simpleicons.org/koyeb/000000" width="22" height="22" alt="Koyeb" /> <strong>Koyeb</strong></td>
       <td>Alternative API host</td>
       <td><a href="https://app.koyeb.com/">Koyeb console</a> · <a href="https://www.koyeb.com/docs">Deployment docs</a></td>
       <td>Check current plan and persistent-storage availability before migrating sessions.</td>
