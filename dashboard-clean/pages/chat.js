@@ -65,7 +65,18 @@ export default function ChatCentre() {
     setSelected({ session_id: sessionId, chat_jid: phone + '@s.whatsapp.net', last_message: '', timestamp: Date.now(), direction: 'outbound' })
     setMessages([]); setDraft(''); setError(''); setNewChat(false); setNewPhone('')
   }
-  async function inviteDashboard() {\n    const link = window.location.origin + '/signup';\n    try { await navigator.clipboard.writeText(link); setError('Invite link copied: ' + link) } catch (_) { setError('Share this dashboard sign-up link: ' + link) }\n  }\n  async function shareContact() {\n    if (!selected) return;\n    const digits = selected.chat_jid.split('@')[0].replace(/[^0-9]/g, '');\n    if (!digits) return;\n    const link = 'https://wa.me/' + digits;\n    try { await navigator.clipboard.writeText(link); setError('WhatsApp contact link copied: ' + link) } catch (_) { setError('WhatsApp contact link: ' + link) }\n  }\n  async function send(e) {
+  async function inviteDashboard() {
+    const link = window.location.origin + '/signup'
+    try { await navigator.clipboard.writeText(link); setError('Invite link copied: ' + link) } catch (_) { setError('Share this dashboard sign-up link: ' + link) }
+  }
+  async function shareContact() {
+    if (!selected) return
+    const digits = selected.chat_jid.split('@')[0].replace(/[^0-9]/g, '')
+    if (!digits) return
+    const link = 'https://wa.me/' + digits
+    try { await navigator.clipboard.writeText(link); setError('WhatsApp contact link copied: ' + link) } catch (_) { setError('WhatsApp contact link: ' + link) }
+  }
+  async function send(e) {
     e.preventDefault()
     if (!selected || !draft.trim() || sending) return
     setSending(true); setError('')
