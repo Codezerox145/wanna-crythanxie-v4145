@@ -284,6 +284,17 @@ app.get('/servers', auth, (_req, res) => {
   res.json({ total: servers.length, verified: 1, servers });
 });
 
+app.post('/groups/invite', auth, async (req, res) => {
+  const sessionId = String(req.body?.sessionId || '');
+  const groupJid = String(req.body?.groupJid || '');
+  const owned = readStore('sessions', []).some(item => item.id === sessionId && item.user_id === req.user.id);
+  if (!owned) return res.status(404).json({ error: 'WhatsApp session not found.' });
+  if (!/^[0-9]+(?:-[0-9]+)?@g\\.us$/.test(groupJid)) return res.status(400).json({ error: 'Choose a valid WhatsApp group.' });
+  try {
+    const code = await whatsapp.groupInviteCode(sessionId, groupJid);
+    return res.json({ inviteUrl: 'https://chat.whatsapp.com/' + code });
+  } catch (error) { return res.status(409).json({ error: String(error.message || 'Invite link is unavailable. The connected bot may need group admin access.') }); }
+});
 // WhatsApp group discovery and native poll creation.
 app.get('/groups', auth, async (req, res) => {
   const sessionId = String(req.query.sessionId || '');
