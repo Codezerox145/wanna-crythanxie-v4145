@@ -10,3 +10,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 ::selection { @apply bg-violet-500/40 text-white; }
 * { scrollbar-width: thin; scrollbar-color: #34304e transparent; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+/* Premium blended tech surfaces and accessible form contrast */
+:root { --tech-violet: #8b5cf6; --tech-blue: #2563eb; --tech-cyan: #06b6d4; --tech-magenta: #d946ef; }
+body { background: radial-gradient(ellipse at 12% 0%, rgba(91,33,182,.16), transparent 38%), radial-gradient(ellipse at 92% 10%, rgba(8,145,178,.10), transparent 34%), #070b18; color: #f8fafc; }
+input, select, textarea { color: #fff !important; background-color: #0b1222; }
+input::placeholder, textarea::placeholder { color: #94a3b8 !important; opacity: 1; }
+input:where([type="checkbox"],[type="radio"]) { accent-color: #a855f7; }
+input:where([type="text"],[type="email"],[type="password"],[type="tel"]), select, textarea { border-color: rgba(148,163,184,.24); }
+input:where([type="text"],[type="email"],[type="password"],[type="tel"]):focus, select:focus, textarea:focus { border-color: #a78bfa; box-shadow: 0 0 0 3px rgba(139,92,246,.16); }
+/* Force legible text on dark and warm accent controls, including orange surfaces. */
+.bg-black, .bg-orange-500, .bg-orange-600, .bg-amber-500, .bg-amber-600 { color: #fff !important; }
+.bg-black :is(p,span,strong,label,a,button), .bg-orange-500 :is(p,span,strong,label,a,button), .bg-orange-600 :is(p,span,strong,label,a,button), .bg-amber-500 :is(p,span,strong,label,a,button), .bg-amber-600 :is(p,span,strong,label,a,button) { color: #fff !important; }
