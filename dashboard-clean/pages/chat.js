@@ -73,7 +73,7 @@ export default function ChatCentre() {
     </div>
     <div className="mb-4 rounded-xl border border-emerald-400/15 bg-emerald-500/[.06] p-3">
       <div className="flex items-center gap-2 text-xs font-bold text-emerald-200"><span>🔒</span> WhatsApp end-to-end encrypted transport</div>
-      <p className="mt-1 text-[11px] leading-5 text-slate-400">WhatsApp encrypts messages between WhatsApp endpoints. This dashboard relays replies through your connected Baileys session and keeps a server-side message cache; that cache is not independently end-to-end encrypted. Use trusted devices and protect your dashboard login.</p>
+      <p className="mt-1 text-[11px] leading-5 text-slate-400">WhatsApp encrypts messages between WhatsApp endpoints. The dashboard message cache is encrypted at rest with AES-256-GCM, but it is not an independent end-to-end encrypted vault because the API must process replies before forwarding them. Use trusted devices and protect your dashboard login.</p>
     </div>
     {error && <div role="alert" className="mb-3 rounded-xl border border-rose-400/20 bg-rose-500/10 p-3 text-xs text-rose-200">{error}</div>}
     <section className="grid min-h-[620px] overflow-hidden rounded-2xl border border-white/[.08] bg-[#10182b] shadow-xl shadow-black/10 lg:grid-cols-[300px_minmax(0,1fr)]">
