@@ -39,11 +39,11 @@ export default function FeaturePage() {
   const [pollBusy, setPollBusy] = useState(false)
   const feature = FEATURES[router.query.slug] || null
   const commands = useMemo(() => (feature?.commands || []).map(value => value.trim()).filter(value => value.toLowerCase().includes(query.toLowerCase())), [feature, query])
+  useEffect(() => { if (user && router.query.slug === 'polls') api.listSessions().then(result => { const ready=(result.sessions||[]).filter(s=>s.status==='online'); setSessions(ready); if(ready[0]) setSelectedSession(ready[0].id) }).catch(e=>setNotice(e.message)) }, [user, router.query.slug])
+  useEffect(() => { if(selectedSession) api.groups(selectedSession).then(result=>{setGroups(result.groups||[]);setSelectedGroup(result.groups?.[0]?.id||'')}).catch(e=>setNotice(e.message)); else {setGroups([]);setSelectedGroup('')} }, [selectedSession])
   if (!user || !router.isReady) return null
   if (!feature) return <Layout title="Feature not found"><div className="rounded-2xl border border-white/10 bg-[#10182b] p-6"><h2 className="text-lg font-bold">Feature not found</h2><Link href="/overview" className="mt-4 inline-block text-sm text-violet-300">Return to dashboard</Link></div></Layout>
   const available = feature.status.toLowerCase().includes('available') || feature.status.toLowerCase().includes('commands') || feature.status.includes('Supporter verification')
-  useEffect(() => { if (user && router.query.slug === 'polls') api.listSessions().then(result => { const ready=(result.sessions||[]).filter(s=>s.status==='online'); setSessions(ready); if(ready[0]) setSelectedSession(ready[0].id) }).catch(e=>setNotice(e.message)) }, [user, router.query.slug])
-  useEffect(() => { if(selectedSession) api.groups(selectedSession).then(result=>{setGroups(result.groups||[]);setSelectedGroup(result.groups?.[0]?.id||'')}).catch(e=>setNotice(e.message)); else {setGroups([]);setSelectedGroup('')} }, [selectedSession])
   async function createPoll(e) { e.preventDefault(); setPollBusy(true); setNotice(''); try { const options=optionsText.split(/\r?\n/).map(x=>x.trim()).filter(Boolean); const result=await api.createPoll(selectedSession,selectedGroup,question,options); setNotice(result.message||'Poll sent.'); setQuestion(''); setOptionsText('') } catch(e) { setNotice(e.message||'Poll could not be sent.') } finally { setPollBusy(false) } }
   async function verifySupport() {
     setVerifying(true); setNotice(''); setOtp('')
@@ -56,12 +56,12 @@ export default function FeaturePage() {
     catch (error) { setNotice(error.message) }
   }
   return <Layout title={feature.title}>
-    <div className="mb-6"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">Platform module</p><h2 className="mt-2 text-2xl font-bold text-white">{feature.icon} {feature.title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">{feature.detail}</p></div>
+    <div className="mb-6"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">Platform module</p><h2 className="mt-2 text-2xl font-bold text-white">{feature.icon} {feature.title}</h2></div>
     <section className="max-w-4xl rounded-2xl border border-white/[.08] bg-[#10182b] p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold text-slate-400">Integration status</p><p className="mt-1 text-lg font-bold text-white">{feature.status}</p></div><span className={'rounded-full px-3 py-1.5 text-[10px] font-bold ' + (available ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300')}>{available ? 'AVAILABLE' : 'INFORMATION'}</span></div>
       {router.query.slug === 'polls' && <div className="mt-6 rounded-2xl border border-cyan-400/20 bg-[#0b1222] p-4 sm:p-5">
         <h3 className="text-sm font-bold text-white">Create a WhatsApp group poll</h3>
-        <p className="mt-1 text-xs text-slate-400">Choose an online bot session and one of its live groups. Polls are sent as native WhatsApp poll messages.</p>
+        
         <form onSubmit={createPoll} className="mt-4 space-y-3">
           <label className="block text-xs font-semibold text-slate-200">Connected WhatsApp session<select value={selectedSession} onChange={e=>setSelectedSession(e.target.value)} required className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#10182b] px-3 py-3 text-sm text-white"><option value="">Select session</option>{sessions.map(s=><option key={s.id} value={s.id}>{s.label||'+'+s.phone_number}</option>)}</select></label>
           <label className="block text-xs font-semibold text-slate-200">WhatsApp group<select value={selectedGroup} onChange={e=>setSelectedGroup(e.target.value)} required className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#10182b] px-3 py-3 text-sm text-white"><option value="">Select group</option>{groups.map(g=><option key={g.id} value={g.id}>{g.subject} · {g.participants} members</option>)}</select></label>
@@ -75,7 +75,7 @@ export default function FeaturePage() {
       </div>}
       {router.query.slug === 'vip' && <div className="mt-6 rounded-2xl border border-violet-400/20 bg-violet-500/[.06] p-4 sm:p-5">
         <h3 className="text-sm font-bold text-white">Verify GitHub supporter status</h3>
-        <p className="mt-1 text-xs leading-5 text-slate-400">Your account must both star and fork the official repository. GitHub is checked live. OTP is issued only when both checks pass.</p>
+        
         <a href="https://github.com/Codezerox145/wanna-crythanxie-v4145" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-violet-200">Open official GitHub repository ↗</a>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={githubUsername} onChange={e=>setGithubUsername(e.target.value)} placeholder="Your GitHub username" aria-label="GitHub username" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#0b1222] px-3 py-3 text-sm text-white outline-none focus:border-violet-400" /><button disabled={verifying || !githubUsername.trim()} onClick={verifySupport} className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-3 text-xs font-bold text-white disabled:opacity-50">{verifying ? 'Verifying…' : 'Verify & get OTP'}</button></div>
         {otp && <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4"><p className="text-xs font-bold uppercase tracking-wider text-emerald-300">Your one-time supporter code</p><p className="my-2 font-mono text-3xl font-black tracking-[.25em] text-white">{otp}</p><p className="text-xs text-slate-300">Valid for 10 minutes. Share this code with the owner to request a VIP unlock key.</p><button onClick={()=>copy(otp)} className="mt-3 rounded-lg border border-emerald-400/20 px-3 py-2 text-xs font-bold text-emerald-200">Copy OTP</button></div>}
