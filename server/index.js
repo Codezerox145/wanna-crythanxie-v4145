@@ -284,6 +284,28 @@ app.get('/servers', auth, (_req, res) => {
   res.json({ total: servers.length, verified: 1, servers });
 });
 
+// WhatsApp group discovery and native poll creation.
+app.get('/groups', auth, async (req, res) => {
+  const sessionId = String(req.query.sessionId || '');
+  const owned = readStore('sessions', []).some(item => item.id === sessionId && item.user_id === req.user.id);
+  if (!owned) return res.status(404).json({ error: 'WhatsApp session not found.' });
+  try { return res.json({ groups: await whatsapp.listGroups(sessionId) }); }
+  catch (error) { return res.status(409).json({ error: String(error.message || 'Could not load groups.') }); }
+});
+app.post('/polls/create', auth, async (req, res) => {
+  const sessionId = String(req.body?.sessionId || '');
+  const groupJid = String(req.body?.groupJid || '');
+  const question = String(req.body?.question || '').trim();
+  const options = Array.isArray(req.body?.options) ? req.body.options : [];
+  const owned = readStore('sessions', []).some(item => item.id === sessionId && item.user_id === req.user.id);
+  if (!owned) return res.status(404).json({ error: 'WhatsApp session not found.' });
+  if (!/^[0-9]+(?:-[0-9]+)?@g\.us$/.test(groupJid)) return res.status(400).json({ error: 'Select a valid WhatsApp group.' });
+  try {
+    const result = await whatsapp.sendPoll(sessionId, groupJid, question, options, req.body?.selectableCount);
+    return res.status(201).json({ ok: true, message: 'WhatsApp poll sent to the selected group.', messageId: result?.key?.id || null });
+  } catch (error) { return res.status(409).json({ error: String(error.message || 'Could not send poll.') }); }
+});
+
 // Dashboard Chat Centre: messages are persisted per WhatsApp session owner.
 app.get('/chat/conversations', auth, (req, res) => {
   const sessions = readStore('sessions', []).filter(item => item.user_id === req.user.id);
