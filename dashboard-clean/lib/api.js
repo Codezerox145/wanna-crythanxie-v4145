@@ -87,6 +87,8 @@ export const api = {
   runtime: () => request('/runtime'),
   analytics: () => request('/analytics'),
   servers: () => request('/servers'),
+  groups: sessionId => request('/groups?sessionId=' + encodeURIComponent(sessionId)),
+  createPoll: (sessionId, groupJid, question, options, selectableCount = 1) => request('/polls/create', { method: 'POST', body: { sessionId, groupJid, question, options, selectableCount } }),
   chatConversations: () => request('/chat/conversations'),
   chatMessages: (sessionId, chatJid) => request('/chat/messages?sessionId=' + encodeURIComponent(sessionId) + '&chatJid=' + encodeURIComponent(chatJid)),
   sendChatMessage: (sessionId, chatJid, message) => request('/chat/send', { method: 'POST', body: { sessionId, chatJid, message } }),
