@@ -20,6 +20,9 @@ export default function ChatCentre() {
   const [messages, setMessages] = useState([])
   const [draft, setDraft] = useState('')
   const [search, setSearch] = useState('')
+  const [newChat, setNewChat] = useState(false)
+  const [newPhone, setNewPhone] = useState('')
+  const [newSession, setNewSession] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -54,6 +57,13 @@ export default function ChatCentre() {
     return () => clearInterval(timer)
   }, [selected, loadMessages])
   const filtered = useMemo(() => conversations.filter(item => chatName(item.chat_jid).toLowerCase().includes(search.toLowerCase()) || String(item.last_message || '').toLowerCase().includes(search.toLowerCase())), [conversations, search])
+  function openNewChat(e) {
+    e.preventDefault()
+    const phone = newPhone.replace(/\\D/g, '')
+    if (!newSession || phone.length < 8 || phone.length > 15) { setError('Choose a connected account and enter an international number with 8–15 digits.'); return }
+    setSelected({ session_id: newSession, chat_jid: phone + '@s.whatsapp.net', last_message: '', timestamp: Date.now(), direction: 'outbound' })
+    setMessages([]); setDraft(''); setError(''); setNewChat(false); setNewPhone('')
+  }
   async function send(e) {
     e.preventDefault()
     if (!selected || !draft.trim() || sending) return
@@ -69,13 +79,14 @@ export default function ChatCentre() {
   return <Layout title="Chat Centre">
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">Live WhatsApp inbox</p><h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">Chat Centre</h2><p className="mt-1 text-xs text-slate-400">Read and reply through your connected WhatsApp sessions.</p></div>
-      <button onClick={() => loadInbox()} disabled={loading} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 disabled:opacity-50">{loading ? 'Refreshing…' : '↻ Refresh inbox'}</button>
+      <div className="flex gap-2"><button onClick={() => setNewChat(v => !v)} className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-2 text-xs font-bold text-white">＋ New chat</button><button onClick={() => loadInbox()} disabled={loading} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 disabled:opacity-50">{loading ? 'Refreshing…' : '↻ Refresh'}</button></div>
     </div>
     <div className="mb-4 rounded-xl border border-emerald-400/15 bg-emerald-500/[.06] p-3">
       <div className="flex items-center gap-2 text-xs font-bold text-emerald-200"><span>🔒</span> WhatsApp end-to-end encrypted transport</div>
       <p className="mt-1 text-[11px] leading-5 text-slate-400">WhatsApp encrypts messages between WhatsApp endpoints. The dashboard message cache is encrypted at rest with AES-256-GCM, but it is not an independent end-to-end encrypted vault because the API must process replies before forwarding them. Use trusted devices and protect your dashboard login.</p>
     </div>
     {error && <div role="alert" className="mb-3 rounded-xl border border-rose-400/20 bg-rose-500/10 p-3 text-xs text-rose-200">{error}</div>}
+    {newChat && <form onSubmit={openNewChat} className="mb-4 grid gap-2 rounded-2xl border border-violet-400/20 bg-[#10182b] p-3 sm:grid-cols-[1fr_1fr_auto]"><select required value={newSession || sessions[0]?.id || ''} onChange={e=>setNewSession(e.target.value)} className="min-w-0 rounded-xl border border-white/10 bg-[#0b1222] px-3 py-2.5 text-xs text-white"><option value="">Select connected WhatsApp account</option>{sessions.map(s=><option key={s.id} value={s.id}>{s.label || '+'+s.phone_number} · {s.status}</option>)}</select><input required value={newPhone} onChange={e=>setNewPhone(e.target.value)} inputMode="tel" placeholder="International number e.g. 2637…" className="min-w-0 rounded-xl border border-white/10 bg-[#0b1222] px-3 py-2.5 text-xs text-white placeholder:text-slate-600"/><button type="submit" disabled={!sessions.length} className="rounded-xl border border-violet-400/20 px-4 py-2.5 text-xs font-bold text-violet-200 disabled:opacity-40">Open conversation</button></form>}
     <section className="grid min-h-[620px] overflow-hidden rounded-2xl border border-white/[.08] bg-[#10182b] shadow-xl shadow-black/10 lg:grid-cols-[300px_minmax(0,1fr)]">
       <aside className="flex min-w-0 flex-col border-b border-white/[.07] lg:border-b-0 lg:border-r">
         <div className="border-b border-white/[.07] p-3">
