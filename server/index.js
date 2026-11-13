@@ -188,7 +188,19 @@ app.post('/sessions', auth, async (req, res) => {
   const owned = sessions.filter(item => item.user_id === req.user.id);
   const max = Math.max(1, Math.min(10, Number(process.env.MAX_SESSIONS_PER_USER || 3)));
   if (owned.length >= max) return res.status(409).json({ error: 'You have reached the maximum of ' + max + ' WhatsApp sessions for this account.' });
-  if (sessions.some(item => item.phone_number === phoneNumber && item.status !== 'deleted')) return res.status(409).json({ error: 'This WhatsApp number is already registered to a session on this platform.' });
+  const existingSession = sessions.find(item => item.phone_number === phoneNumber && item.status !== 'deleted');
+  if (existingSession) {
+    if (existingSession.user_id === req.user.id && ['error', 'logged_out'].includes(existingSession.status)) {
+      await whatsapp.stopSession(existingSession.id);
+      sessions.splice(sessions.indexOf(existingSession), 1);
+      writeStore('sessions', sessions);
+      fs.rmSync(path.join(SESSION_DIR, existingSession.id), { recursive: true, force: true });
+    } else {
+      return res.status(409).json({ error: existingSession.user_id === req.user.id
+        ? 'This number already has a WhatsApp session. Open Bot Management to reconnect or unlink it first.'
+        : 'This WhatsApp number is already registered to another account on this platform.' });
+    }
+  }
 
   const id = crypto.randomUUID();
   const paths = sessionPaths(id);
