@@ -160,6 +160,12 @@ async function main() {
   const unauthorized = await fetch(base + '/sessions')
   assert.equal(unauthorized.status, 401)
 
+  const chatUnauthorized = await fetch(base + '/chat/conversations')
+  assert.equal(chatUnauthorized.status, 401)
+
+  const chatMessagesUnauthorized = await fetch(base + '/chat/messages?sessionId=missing&chatJid=263780706629@s.whatsapp.net')
+  assert.equal(chatMessagesUnauthorized.status, 401)
+
   const sessions = await fetch(base + '/sessions', {
     headers: { Authorization: 'Bearer ' + loggedIn.token }
   })
