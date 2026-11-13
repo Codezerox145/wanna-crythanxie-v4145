@@ -17,6 +17,7 @@ export default function PairingCode() {
   const [session, setSession] = useState(null)
   const [error, setError] = useState('')
   const [secondsLeft, setSecondsLeft] = useState(EXPIRY_SECONDS)
+  const [retrying, setRetrying] = useState(false)
 
   useEffect(() => {
     if (!user || !id) return
@@ -50,6 +51,13 @@ export default function PairingCode() {
 
   if (!user) return null
 
+  async function retryPairing() {
+    setRetrying(true); setError('')
+    try { await api.restartSession(id); const latest = await api.getSession(id); setSession(latest); setSecondsLeft(EXPIRY_SECONDS) }
+    catch (err) { setError(err.message || 'Could not restart pairing.') }
+    finally { setRetrying(false) }
+  }
+
   const code = session?.pairing_code
   const mins = String(Math.floor(secondsLeft / 60)).padStart(2, '0')
   const secs = String(secondsLeft % 60).padStart(2, '0')
@@ -78,7 +86,8 @@ export default function PairingCode() {
           </>
         )}
 
-        {session?.status === 'logged_out' && <p className="mb-4 text-sm text-red-500">WhatsApp logged this device out. Return to Pair a device and request a new code.</p>}
+        {session?.status === 'logged_out' && <p className="mb-4 text-sm text-red-500">WhatsApp logged this device out.</p>}
+        {(session?.status === 'error' || session?.status === 'logged_out') && <button type="button" onClick={retryPairing} disabled={retrying} className="mb-4 w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{retrying ? 'Retrying…' : 'Retry pairing'}</button>}
 
         {session?.status === 'online' && (
           <p className="text-brand-600 font-medium text-sm mb-4">✅ Connected! Redirecting…</p>
