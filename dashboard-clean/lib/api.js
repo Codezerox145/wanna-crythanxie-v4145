@@ -40,7 +40,7 @@ function resolveApiUrl(path) {
     throw new Error('The API address is invalid. Set NEXT_PUBLIC_API_BASE to the full public HTTPS API URL.')
   }
   if (!['http:', 'https:'].includes(base.protocol) || !base.host) throw new Error('The API address must use http:// or https:// and include a hostname.')
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.protocol !== 'https:') throw new Error('The dashboard is using HTTPS but the API address is not. Set NEXT_PUBLIC_API_BASE to the API host's public HTTPS URL.')
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.protocol !== 'https:') throw new Error("The dashboard is using HTTPS but the API address is not. Set NEXT_PUBLIC_API_BASE to the API host public HTTPS URL.")
   return new URL(path, base.origin + '/')
 }
 
