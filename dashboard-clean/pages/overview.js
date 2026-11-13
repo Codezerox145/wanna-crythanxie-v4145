@@ -65,7 +65,7 @@ export default function Overview() {
       </Panel>
       <Panel title="Quick actions" subtitle="Shortcuts to working dashboard tools">
         <div className="grid grid-cols-2 gap-2">
-          {[['Pair new bot','/pair','⌁'],['Manage sessions','/sessions','▣'],['Server status','/servers','▤'],['Account settings','/settings','⚙']].map(([label,href,icon]) => <Link key={href} href={href} className="flex min-h-[88px] flex-col justify-between rounded-xl border border-white/[.07] bg-[#0b1222] p-3 transition hover:border-violet-400/40 hover:bg-violet-500/[.07]"><span className="text-xl text-violet-300">{icon}</span><span className="text-xs font-bold text-slate-200">{label} <span className="text-violet-300">↗</span></span></Link>)}
+          {[['Pair new bot','/pair','⌁'],['Manage sessions','/sessions','▣'],['Chat Centre','/chat','▣'],['Server status','/servers','▤'],['Account settings','/settings','⚙']].map(([label,href,icon]) => <Link key={href} href={href} className="flex min-h-[88px] flex-col justify-between rounded-xl border border-white/[.07] bg-[#0b1222] p-3 transition hover:border-violet-400/40 hover:bg-violet-500/[.07]"><span className="text-xl text-violet-300">{icon}</span><span className="text-xs font-bold text-slate-200">{label} <span className="text-violet-300">↗</span></span></Link>)}
         </div>
       </Panel>
     </div>
@@ -75,7 +75,7 @@ export default function Overview() {
       </Panel>
       <Panel title="Platform modules" subtitle="Feature availability from this deployment">
         <div className="space-y-2">
-          {[['WhatsApp pairing','Available','/pair',true],['Session management','Available','/sessions',true],['Server telemetry','Available','/servers',true],['Advertising campaigns','Not configured','/features/advertising',false],['Payments & billing','Not configured','/features/payments',false],['Chat centre & polls','Not configured','/features/chat',false]].map(([label,status,href,ready]) => <Link key={label} href={href} className="flex items-center justify-between gap-3 rounded-lg bg-[#0b1222] px-3 py-2.5"><span className="text-xs font-medium text-slate-300">{label}</span><span className={'text-[10px] font-bold ' + (ready ? 'text-emerald-300' : 'text-amber-300')}>{status}</span></Link>)}
+          {[['WhatsApp pairing','Available','/pair',true],['Session management','Available','/sessions',true],['Server telemetry','Available','/servers',true],['Chat Centre','Available','/chat',true],['Advertising campaigns','Coming Soon','/features/advertising',false],['Payments & billing','Coming Soon','/features/payments',false],['Polls & Channels','Coming Soon','/features/polls',false]].map(([label,status,href,ready]) => <Link key={label} href={href} className="flex items-center justify-between gap-3 rounded-lg bg-[#0b1222] px-3 py-2.5"><span className="text-xs font-medium text-slate-300">{label}</span><span className={'text-[10px] font-bold ' + (ready ? 'text-emerald-300' : 'text-amber-300')}>{status}</span></Link>)}
         </div>
       </Panel>
     </div>
