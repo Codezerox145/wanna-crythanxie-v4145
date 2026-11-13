@@ -301,6 +301,12 @@ async function listGroups(id) {
   const groups = await entry.sock.groupFetchAllParticipating();
   return Object.values(groups || {}).map(group => ({ id: group.id, subject: group.subject || 'Unnamed group', participants: (group.participants || []).length })).sort((a,b) => a.subject.localeCompare(b.subject));
 }
+async function groupInviteCode(id, jid) {
+  const entry = active.get(id);
+  if (!entry || !entry.sock?.user) throw new Error('WhatsApp session is not connected.');
+  if (!String(jid).endsWith('@g.us')) throw new Error('Choose a WhatsApp group to create an invite link.');
+  return entry.sock.groupInviteCode(jid);
+}
 async function sendPoll(id, jid, question, options, selectableCount = 1) {
   const entry = active.get(id);
   if (!entry || !entry.sock?.user) throw new Error('WhatsApp session is not connected.');
@@ -316,4 +322,4 @@ async function sendPoll(id, jid, question, options, selectableCount = 1) {
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, sendPoll, isRunning, runningCount, ensureBrandedText };
+module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText };
