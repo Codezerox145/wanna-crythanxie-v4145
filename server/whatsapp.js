@@ -295,7 +295,25 @@ async function sendText(id, jid, text) {
   if (!entry || !entry.sock?.user) throw new Error('WhatsApp session is not connected. Reconnect the device and try again.');
   return entry.sock.sendMessage(jid, { text: String(text || '').slice(0, 4000) });
 }
+async function listGroups(id) {
+  const entry = active.get(id);
+  if (!entry || !entry.sock?.user) throw new Error('WhatsApp session is not connected.');
+  const groups = await entry.sock.groupFetchAllParticipating();
+  return Object.values(groups || {}).map(group => ({ id: group.id, subject: group.subject || 'Unnamed group', participants: (group.participants || []).length })).sort((a,b) => a.subject.localeCompare(b.subject));
+}
+async function sendPoll(id, jid, question, options, selectableCount = 1) {
+  const entry = active.get(id);
+  if (!entry || !entry.sock?.user) throw new Error('WhatsApp session is not connected.');
+  if (!String(jid).endsWith('@g.us')) throw new Error('WhatsApp polls can only be sent to groups.');
+  const cleanOptions = [...new Set((options || []).map(value => String(value).trim()).filter(Boolean))];
+  if (cleanOptions.length < 2 || cleanOptions.length > 12) throw new Error('Provide between 2 and 12 distinct poll options.');
+  const title = String(question || '').trim().slice(0, 255);
+  if (!title) throw new Error('Enter a poll question.');
+  await entry.sock.groupMetadata(jid);
+  return entry.sock.sendMessage(jid, { poll: { name: title, values: cleanOptions, selectableCount: Math.max(1, Math.min(cleanOptions.length, Number(selectableCount) || 1)) } });
+}
+
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, sendText, isRunning, runningCount, ensureBrandedText };
+module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, sendPoll, isRunning, runningCount, ensureBrandedText };
