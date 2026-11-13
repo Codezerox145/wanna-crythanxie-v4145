@@ -93,7 +93,7 @@ export const api = {
   chatConversations: () => request('/chat/conversations'),
   chatMessages: (sessionId, chatJid) => request('/chat/messages?sessionId=' + encodeURIComponent(sessionId) + '&chatJid=' + encodeURIComponent(chatJid)),
   sendChatMessage: (sessionId, chatJid, message) => request('/chat/send', { method: 'POST', body: { sessionId, chatJid, message } }),
-  verifySupporter: githubUsername => request('/supporter/verify', { method: 'POST', body: { githubUsername } }),
+  verifySupporter: (githubUsername, issueOtp = true) => request('/supporter/verify', { method: 'POST', body: { githubUsername, issueOtp } }),
   ownerOverview: () => request('/owner/overview'),
   ownerUsers: () => request('/owner/users'),
 }
