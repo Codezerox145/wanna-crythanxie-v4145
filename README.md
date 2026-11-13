@@ -6,7 +6,7 @@
 
 [![Open Dashboard](https://img.shields.io/badge/OPEN_DASHBOARD-Launch-7C3AED?style=for-the-badge)](https://wanna-crythanxie-v4145-loch.vercel.app) [![Fork](https://img.shields.io/badge/FORK-Repository-24292F?style=for-the-badge&logo=github)](https://github.com/Codezerox145/wanna-crythanxie-v4145/fork) [![Star](https://img.shields.io/badge/STAR-Repository-24292F?style=for-the-badge&logo=github)](https://github.com/Codezerox145/wanna-crythanxie-v4145/stargazers) [![WhatsApp Channel](https://img.shields.io/badge/FOLLOW-Official_Channel-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://whatsapp.com/channel/0029VbE9KJvJkK73C7RNvP2z)
 
-[Launch dashboard](https://wanna-crythanxie-v4145-loch.vercel.app) · [English guide](THANXIEEDEV/en/README.md) · [Source code](https://github.com/Codezerox145/wanna-crythanxie-v4145)
+[Launch dashboard](https://wanna-crythanxie-v4145-loch.vercel.app) · [English guide](THANXIEEDEV/en/README.md) · [Source code](https://github.com/Codezerox145/wanna-crythanxie-v4145) · [Deploy anywhere](DEPLOYMENT-ANYWHERE.md)
 
 ---
 
