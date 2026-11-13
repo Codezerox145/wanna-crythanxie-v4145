@@ -25,10 +25,20 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) {
 }
 fs.mkdirSync(SESSION_DIR, { recursive: true });
 
+function messageEncryptionKey() {
+  return crypto.createHash('sha256').update(JWT_SECRET).digest();
+}
 function readStore(name, fallback) {
   const file = path.join(DATA_DIR, name + '.json');
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
-  catch (error) {
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (name !== 'messages' || !parsed || parsed.$encrypted !== 'aes-256-gcm') return parsed;
+    const decipher = crypto.createDecipheriv('aes-256-gcm', messageEncryptionKey(), Buffer.from(parsed.iv, 'base64'));
+    decipher.setAuthTag(Buffer.from(parsed.tag, 'base64'));
+    const clear = Buffer.concat([decipher.update(Buffer.from(parsed.data, 'base64')), decipher.final()]).toString('utf8');
+    return JSON.parse(clear);
+  } catch (error) {
     if (error.code !== 'ENOENT') console.error('Store read failed:', name, error.message);
     return fallback;
   }
@@ -36,7 +46,14 @@ function readStore(name, fallback) {
 function writeStore(name, value) {
   const file = path.join(DATA_DIR, name + '.json');
   const temp = file + '.' + process.pid + '.tmp';
-  fs.writeFileSync(temp, JSON.stringify(value, null, 2), { mode: 0o600 });
+  let serialized = JSON.stringify(value, null, 2);
+  if (name === 'messages') {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', messageEncryptionKey(), iv);
+    const encrypted = Buffer.concat([cipher.update(serialized, 'utf8'), cipher.final()]);
+    serialized = JSON.stringify({ $encrypted: 'aes-256-gcm', iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), data: encrypted.toString('base64') });
+  }
+  fs.writeFileSync(temp, serialized, { mode: 0o600 });
   fs.renameSync(temp, file);
 }
 function isOwnerEmail(email) {
