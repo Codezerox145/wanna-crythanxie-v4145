@@ -246,6 +246,9 @@ app.get('/runtime', auth, (_req, res) => {
   const memory = process.memoryUsage();
   res.json({
     platform: process.env.RENDER ? 'Render' : process.platform,
+    provider: process.env.RENDER ? 'Render' : 'Unknown',
+    region: process.env.RENDER_REGION || null,
+    location: process.env.RENDER_REGION || null,
     node: process.version,
     operating_system: os.type() + ' ' + os.release(),
     architecture: os.arch(),
@@ -261,7 +264,7 @@ app.get('/runtime', auth, (_req, res) => {
     worker_connected: whatsapp.runningCount() > 0,
     active_workers: whatsapp.runningCount(),
     active_bot_processes: whatsapp.runningCount(),
-    configured_server_count: 1
+    configured_server_count: serverRegistry().length + 1
   });
 });
 app.get('/analytics', auth, (req, res) => {
@@ -272,9 +275,9 @@ app.get('/servers', auth, (_req, res) => {
   const configured = serverRegistry().map(item => ({ ...item, status: item.status || 'unverified', verified: false }));
   const current = {
     id: 'current-api', name: 'WhatsApp API + Baileys worker', provider: 'Render',
-    region: process.env.RENDER_REGION || 'managed', country: 'Unknown', location: 'Render managed host',
-    cpu: 'Shared', ram: 'Plan dependent', storage: 'Persistent disk recommended',
-    operating_system: os.type(), status: 'online', verified: true,
+    region: process.env.RENDER_REGION || 'Not exposed', country: 'Not exposed', location: process.env.RENDER_REGION || 'Not exposed',
+    cpu: os.cpus().length + ' visible logical core(s)', ram: Math.round(os.totalmem() / 1024 / 1024) + ' MiB visible host memory', storage: 'Not exposed by runtime',
+    operating_system: os.type() + ' ' + os.release(), status: 'online', verified: true,
     note: whatsapp.runningCount() + ' Baileys worker(s) active in this API instance.'
   };
   const servers = [current, ...configured.filter(item => item.id !== current.id)];
