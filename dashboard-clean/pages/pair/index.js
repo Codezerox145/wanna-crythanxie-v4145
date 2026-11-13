@@ -53,10 +53,9 @@ export default function Pair() {
   const [query, setQuery] = useState('')
   const [showCommunityGate, setShowCommunityGate] = useState(false)
   const [pendingPhone, setPendingPhone] = useState('')
-  const [forkOpened, setForkOpened] = useState(false)
-  const [starOpened, setStarOpened] = useState(false)
   const [communityConfirmed, setCommunityConfirmed] = useState(false)
   const [communityError, setCommunityError] = useState('')
+  const [githubUsername, setGithubUsername] = useState('')
 
   useEffect(() => {
     let active = true
@@ -81,13 +80,6 @@ export default function Pair() {
   function openCommunityLink(kind) {
     const target = kind === 'fork' ? `${GITHUB_REPO}/fork` : GITHUB_REPO
     window.open(target, '_blank', 'noopener,noreferrer')
-    if (kind === 'fork') {
-      const nextFork = true; setForkOpened(nextFork)
-      if (nextFork && starOpened) playCongratulations()
-    } else {
-      const nextStar = true; setStarOpened(nextStar)
-      if (forkOpened && nextStar) playCongratulations()
-    }
     setCommunityError('')
   }
 
@@ -100,17 +92,16 @@ export default function Pair() {
       return
     }
     setPendingPhone(dial + digits)
-    setForkOpened(false); setStarOpened(false); setCommunityConfirmed(false); setCommunityError('')
+    setCommunityConfirmed(false); setCommunityError('')
     setShowCommunityGate(true)
   }
 
   async function continueToPairing() {
-    if (!forkOpened || !starOpened || !communityConfirmed) {
-      setCommunityError('Open both GitHub actions and confirm that you have completed the fork and star before continuing.')
-      return
-    }
+    if (!githubUsername.trim()) { setCommunityError('Enter your GitHub username to verify your fork and star.'); return }
+    if (!communityConfirmed) { setCommunityError('Confirm that you completed both GitHub actions.'); return }
     setLoading(true); setCommunityError('')
     try {
+      await api.verifySupporter(githubUsername.trim(), false)
       const { sessionId } = await api.createSession(pendingPhone, region, '', true)
       router.push(`/pair/${sessionId}`)
     } catch (err) { setCommunityError(err.message) }
@@ -133,18 +124,18 @@ export default function Pair() {
     {showCommunityGate && <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/75 p-3 sm:p-5" role="dialog" aria-modal="true" aria-labelledby="community-gate-title">
       <div className="my-auto w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-7">
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-100 text-3xl dark:bg-indigo-900/40">⭐</div>
-        <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-[.2em] text-indigo-600">A little support keeps us growing</p>
-        <h2 id="community-gate-title" className="mt-2 text-center text-2xl font-black">Fork & Star the project</h2>
-        <p className="mt-2 text-center text-sm leading-6 text-slate-500 dark:text-slate-400">Before pairing, please fork WANNA-CRY THANXIEE to your GitHub account and star the original repository. It helps others discover the project.</p>
+        <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-[.2em] text-indigo-600">PROJECT SUPPORT</p>
+        <h2 id="community-gate-title" className="mt-2 text-center text-2xl font-black">GitHub support</h2>
+        <p className="mt-2 text-center text-sm leading-6 text-slate-500 dark:text-slate-400">Complete both GitHub actions to continue.</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button type="button" onClick={() => openCommunityLink('fork')} className={'rounded-2xl border p-4 text-left transition ' + (forkOpened ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' : 'border-slate-200 hover:border-indigo-400 dark:border-slate-700')}><span className="flex items-center justify-between"><span className="text-2xl">⑂</span><span className="text-xs font-bold">{forkOpened ? '✓ Opened' : 'Step 1'}</span></span><span className="mt-2 block font-bold">Fork repository</span><span className="mt-1 block text-xs text-slate-500">Opens GitHub's Fork page in a new tab.</span></button>
-          <button type="button" onClick={() => openCommunityLink('star')} className={'rounded-2xl border p-4 text-left transition ' + (starOpened ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' : 'border-slate-200 hover:border-indigo-400 dark:border-slate-700')}><span className="flex items-center justify-between"><span className="text-2xl">★</span><span className="text-xs font-bold">{starOpened ? '✓ Opened' : 'Step 2'}</span></span><span className="mt-2 block font-bold">Star repository</span><span className="mt-1 block text-xs text-slate-500">Opens the original repository so you can star it.</span></button>
+          <button type="button" onClick={() => openCommunityLink('fork')} className="rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-400 dark:border-slate-700"><span className="flex items-center justify-between"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true"><path d="M7 3h3v7.2l7.1-4.1 1.5 2.6-7.1 4.1 7.1 4.1-1.5 2.6L10 15.4V22H7V3Z"/></svg><span className="text-xs font-bold">Step 1</span></span><span className="mt-2 block font-bold">Fork repository</span><span className="mt-1 block text-xs text-slate-500">Opens GitHub's Fork page in a new tab.</span></button>
+          <button type="button" onClick={() => openCommunityLink('star')} className="rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-400 dark:border-slate-700"><span className="flex items-center justify-between"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true"><path d="m12 2 3.1 6.3 7 1-5.1 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5.1-4.9 7-1L12 2Z"/></svg><span className="text-xs font-bold">Step 2</span></span><span className="mt-2 block font-bold">Star repository</span><span className="mt-1 block text-xs text-slate-500">Opens the original repository so you can star it.</span></button>
         </div>
-        {forkOpened && starOpened && <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-center text-sm font-semibold text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">🎉 Congratulations! Thanks for supporting the project.</div>}
-        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700"><input type="checkbox" checked={communityConfirmed} onChange={e => setCommunityConfirmed(e.target.checked)} className="mt-1 h-4 w-4 accent-indigo-600" /><span>I have completed the fork and starred the original repository.</span></label>
-        <p className="mt-2 text-[11px] leading-5 text-slate-500">This simple flow does not use GitHub API access. Opening the links is not proof of a fork or star; pairing continues based on your confirmation.</p>
+        <div className="mt-4"><label className="mb-1 block text-xs font-semibold">GitHub username</label><input value={githubUsername} onChange={e => setGithubUsername(e.target.value)} autoComplete="username" placeholder="your-github-username" className="w-full rounded-xl border border-slate-200 bg-transparent px-3 py-3 text-sm dark:border-slate-700" /></div>
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700"><input type="checkbox" checked={communityConfirmed} onChange={e => setCommunityConfirmed(e.target.checked)} className="mt-1 h-4 w-4 accent-indigo-600" /><span>I have starred and forked the repository.</span></label>
+        
         {communityError && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/30">{communityError}</p>}
-        <div className="mt-5 grid grid-cols-2 gap-3"><button type="button" onClick={() => setShowCommunityGate(false)} disabled={loading} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-700">Not now</button><button type="button" onClick={continueToPairing} disabled={loading || !forkOpened || !starOpened || !communityConfirmed} className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{loading ? 'Starting pairing…' : 'Continue to pairing'}</button></div>
+        <div className="mt-5 grid grid-cols-2 gap-3"><button type="button" onClick={() => setShowCommunityGate(false)} disabled={loading} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-700">Not now</button><button type="button" onClick={continueToPairing} disabled={loading || !githubUsername.trim() || !communityConfirmed} className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{loading ? 'Starting pairing…' : 'Continue to pairing'}</button></div>
       </div>
     </div>}
   </Layout>
