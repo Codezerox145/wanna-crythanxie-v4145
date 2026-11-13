@@ -53,7 +53,10 @@ export default function PairingCode() {
 
   async function retryPairing() {
     setRetrying(true); setError('')
-    try { await api.restartSession(id); const latest = await api.getSession(id); setSession(latest); setSecondsLeft(EXPIRY_SECONDS) }
+    try {
+      if (session?.status === 'logged_out') { await api.deleteSession(id); await router.replace('/pair'); return }
+      await api.restartSession(id); const latest = await api.getSession(id); setSession(latest); setSecondsLeft(EXPIRY_SECONDS)
+    }
     catch (err) { setError(err.message || 'Could not restart pairing.') }
     finally { setRetrying(false) }
   }
