@@ -121,6 +121,18 @@ async function processIncoming(sock, session, message) {
     }
     if (!rawText.trim()) return;
 
+    // Feed the authenticated dashboard inbox. WhatsApp transport encryption remains
+    // provided by WhatsApp; this platform cache is not an independent E2E vault.
+    session.onMessage?.({
+      id: String(msg.key?.id || crypto.randomUUID()),
+      session_id: session.id,
+      chat_jid: remoteJid,
+      sender_jid: sender,
+      text: rawText.slice(0, 4000),
+      direction: 'inbound',
+      timestamp: Number(msg.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000
+    });
+
     const contextInfo = normalized[getContentType(normalized)]?.contextInfo || {};
     const quotedMessage = contextInfo.quotedMessage || null;
     const quotedText = quotedMessage ? textFromMessage(quotedMessage) : null;
