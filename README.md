@@ -10,6 +10,74 @@
 
 ---
 
+## Cloud platforms
+
+<table>
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>Role in this project</th>
+      <th>Deploy / project</th>
+      <th>Persistence notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="https://cdn.simpleicons.org/render/46E3B7" width="22" height="22" alt="Render" /> <strong>Render</strong></td>
+      <td>WhatsApp API and Baileys worker</td>
+      <td><a href="https://dashboard.render.com/web/srv-dbr02sg8v5cc73ecc650">Open Render service</a> · <a href="https://render.com/deploy">Render deploy guide</a></td>
+      <td>Current service is on the Free plan (ephemeral filesystem). Persistent disks require a paid service plan.</td>
+    </tr>
+    <tr>
+      <td><img src="https://cdn.simpleicons.org/vercel/FFFFFF" width="22" height="22" alt="Vercel" /> <strong>Vercel</strong></td>
+      <td>Next.js web dashboard</td>
+      <td><a href="https://vercel.com/dashboard">Vercel dashboard</a> · <a href="https://vercel.com/new">Deploy to Vercel</a></td>
+      <td>Dashboard hosting only; WhatsApp auth files remain on the API host.</td>
+    </tr>
+    <tr>
+      <td><img src="https://cdn.simpleicons.org/koyeb/FFFFFF" width="22" height="22" alt="Koyeb" /> <strong>Koyeb</strong></td>
+      <td>Alternative API host</td>
+      <td><a href="https://app.koyeb.com/">Koyeb console</a> · <a href="https://www.koyeb.com/docs">Deployment docs</a></td>
+      <td>Check current plan and persistent-storage availability before migrating sessions.</td>
+    </tr>
+    <tr>
+      <td><img src="https://cdn.simpleicons.org/heroku/430098" width="22" height="22" alt="Heroku" /> <strong>Heroku</strong></td>
+      <td>Alternative API host</td>
+      <td><a href="https://dashboard.heroku.com/">Heroku dashboard</a> · <a href="https://devcenter.heroku.com/articles/deploying-nodejs">Node.js deploy guide</a></td>
+      <td>Dyno filesystems are ephemeral; use an external persistent datastore for auth/session files.</td>
+    </tr>
+  </tbody>
+</table>
+
+> **Deployment truth:** Render + Vercel are the configured hosts for this project. Koyeb and Heroku are alternatives, not active deployments. Provider free tiers, limits, and prices change; verify them with the provider before deploying.
+
+## Persistent WhatsApp session storage
+
+The API stores account records, session metadata, encrypted message history, Baileys multi-file credentials, and per-session bot data beneath `PLATFORM_DATA_DIR`. The worker restores saved sessions on API startup when their credential file is present.
+
+**Current hosting limitation:** the active Render service is on the Free plan. Its filesystem is ephemeral, so a restart or redeploy can erase WhatsApp credentials and local account data. Render only supports service-attached persistent disks on paid web services, private services, and background workers.
+
+To enable durable storage on Render:
+
+1. Upgrade the API service to a paid plan in the Render Dashboard.
+2. Open the service's **Disks** page and attach a disk mounted at `/var/data`. Choose capacity based on actual session and message-data growth.
+3. Set `PLATFORM_DATA_DIR=/var/data/platform_data` in the Render environment.
+4. Keep the service at one instance; Render disks are single-instance storage and prevent zero-downtime deploys.
+5. Deploy, then verify that `/var/data/platform_data/sessions` is writable and that a test file survives a service restart.
+
+Do not assume persistence is active until the disk is attached and a restart-survival test passes. Back up important data separately; a disk is not a substitute for an application-level backup.
+
+## Real pairing verification checklist
+
+1. Create/sign in to your dashboard account.
+2. Open **Pair a device**, enter a WhatsApp number in international format, and request a pairing code.
+3. Complete the WhatsApp **Linked devices → Link a device → Link with phone number instead** flow.
+4. Enter the displayed code in WhatsApp and wait for the API session to report **online**.
+5. Send a test message to the connected bot and confirm it receives and responds.
+6. Restart the Render service and confirm the session reconnects without requesting a new pairing code. This final check is meaningful only after persistent storage is attached.
+
+Never publish pairing codes, `creds.json`, auth folders, JWT secrets, or screenshots containing account credentials.
+
 ## Project structure
 
 - Dashboard: dashboard-clean/
