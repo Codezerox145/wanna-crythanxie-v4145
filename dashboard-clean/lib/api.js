@@ -14,17 +14,22 @@ export function setToken(token, remember = true) {
 export function getUser() {
   if (typeof window === 'undefined' || !getToken()) return null
   try {
-    const raw = localStorage.getItem('user')
+    const raw = localStorage.getItem('user') || sessionStorage.getItem('user')
     return raw ? JSON.parse(raw) : null
   } catch {
     localStorage.removeItem('user')
+    sessionStorage.removeItem('user')
     return null
   }
 }
 export function setUser(user) {
   if (typeof window === 'undefined') return
-  if (user) localStorage.setItem('user', JSON.stringify(user))
-  else localStorage.removeItem('user')
+  localStorage.removeItem('user')
+  sessionStorage.removeItem('user')
+  if (user) {
+    const storage = getToken() && sessionStorage.getItem('token') ? sessionStorage : localStorage
+    storage.setItem('user', JSON.stringify(user))
+  }
 }
 export function getApiBase() { return API_BASE }
 
@@ -35,9 +40,7 @@ function resolveApiUrl(path) {
     throw new Error('The API address is invalid. Set NEXT_PUBLIC_API_BASE to the full public API URL, including https://.')
   }
   if (!['http:', 'https:'].includes(base.protocol) || !base.host) throw new Error('The API address must use http:// or https:// and include a hostname.')
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.protocol !== 'https:') {
-    throw new Error('The dashboard is using HTTPS but the API address is not. Set NEXT_PUBLIC_API_BASE to your HTTPS Render URL.')
-  }
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.protocol !== 'https:') throw new Error('The dashboard is using HTTPS but the API address is not. Set NEXT_PUBLIC_API_BASE to your HTTPS Render URL.')
   return new URL(path, base.origin + '/')
 }
 
@@ -55,9 +58,9 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   try {
     response = await fetch(url.toString(), { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, signal: controller.signal, mode: 'cors', cache: 'no-store', credentials: 'omit' })
   } catch (error) {
-    if (error && error.name === 'AbortError') throw new Error('The API did not respond within 60 seconds. The API host may be waking from sleep or unavailable. Check the API service and /health endpoint, then retry.')
+    if (error && error.name === 'AbortError') throw new Error('The API did not respond within 60 seconds. Check the API service and /health endpoint, then retry.')
     if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('Your device appears to be offline. Reconnect to the internet and try again.')
-    throw new Error('Cannot reach the API at ' + API_BASE + '. Confirm the API service is running, /health responds, and DASHBOARD_ORIGIN includes this exact dashboard domain. Browser detail: ' + ((error && error.message) || 'Network request blocked'))
+    throw new Error('Cannot reach the API at ' + API_BASE + '. Confirm the API service is running and DASHBOARD_ORIGIN includes this exact dashboard domain. Browser detail: ' + ((error && error.message) || 'Network request blocked'))
   } finally { clearTimeout(timer) }
   const contentType = response.headers.get('content-type') || ''
   const data = contentType.includes('application/json') ? await response.json().catch(() => ({})) : {}
@@ -84,6 +87,9 @@ export const api = {
   runtime: () => request('/runtime'),
   analytics: () => request('/analytics'),
   servers: () => request('/servers'),
+  chatConversations: () => request('/chat/conversations'),
+  chatMessages: (sessionId, chatJid) => request('/chat/messages?sessionId=' + encodeURIComponent(sessionId) + '&chatJid=' + encodeURIComponent(chatJid)),
+  sendChatMessage: (sessionId, chatJid, message) => request('/chat/send', { method: 'POST', body: { sessionId, chatJid, message } }),
   verifySupporter: githubUsername => request('/supporter/verify', { method: 'POST', body: { githubUsername } }),
   ownerOverview: () => request('/owner/overview'),
   ownerUsers: () => request('/owner/users'),
