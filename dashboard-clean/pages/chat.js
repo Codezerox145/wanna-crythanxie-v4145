@@ -71,10 +71,19 @@ export default function ChatCentre() {
   }
   async function shareContact() {
     if (!selected) return
-    const digits = selected.chat_jid.split('@')[0].replace(/[^0-9]/g, '')
-    if (!digits) return
-    const link = 'https://wa.me/' + digits
-    try { await navigator.clipboard.writeText(link); setError('WhatsApp contact link copied: ' + link) } catch (_) { setError('WhatsApp contact link: ' + link) }
+    try {
+      let link
+      if (selected.chat_jid.endsWith('@g.us')) {
+        const result = await api.groupInvite(selected.session_id, selected.chat_jid)
+        link = result.inviteUrl
+      } else {
+        const digits = selected.chat_jid.split('@')[0].replace(/[^0-9]/g, '')
+        if (!digits) return
+        link = 'https://wa.me/' + digits
+      }
+      await navigator.clipboard.writeText(link)
+      setError('WhatsApp invite link copied: ' + link)
+    } catch (e) { setError(e.message || 'Could not create or copy the WhatsApp invite link.') }
   }
   async function send(e) {
     e.preventDefault()
@@ -115,7 +124,7 @@ export default function ChatCentre() {
       </aside>
       <div className="flex min-w-0 flex-col bg-[#0b1222]">
         {selected ? <>
-          <header className="flex items-center justify-between gap-3 border-b border-white/[.07] bg-[#10182b] p-3 sm:p-4"><div className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violet-500/15 text-xs font-bold text-violet-200">{initials(selected.chat_jid)}</span><div className="min-w-0"><h3 className="truncate text-xs font-bold text-white">{chatName(selected.chat_jid)}</h3><p className="mt-0.5 text-[10px] text-slate-500">{activeSession?.label || '+'+(activeSession?.phone_number || '')} · {activeSession?.status || 'session'}</p></div></div><div className="flex items-center gap-2"><button onClick={shareContact} className="rounded-lg border border-white/10 px-2 py-1.5 text-[9px] font-bold text-slate-200">Share contact</button><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold text-emerald-300">WHATSAPP</span></div></header>
+          <header className="flex items-center justify-between gap-3 border-b border-white/[.07] bg-[#10182b] p-3 sm:p-4"><div className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violet-500/15 text-xs font-bold text-violet-200">{initials(selected.chat_jid)}</span><div className="min-w-0"><h3 className="truncate text-xs font-bold text-white">{chatName(selected.chat_jid)}</h3><p className="mt-0.5 text-[10px] text-slate-500">{activeSession?.label || '+'+(activeSession?.phone_number || '')} · {activeSession?.status || 'session'}</p></div></div><div className="flex items-center gap-2"><button onClick={shareContact} className="rounded-lg border border-white/10 px-2 py-1.5 text-[9px] font-bold text-slate-200">{selected.chat_jid.endsWith('@g.us') ? 'Invite group' : 'Share contact'}</button><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold text-emerald-300">WHATSAPP</span></div></header>
           <div className="flex-1 space-y-3 overflow-y-auto p-3 sm:p-5">
             {messages.length ? messages.map((message,i)=><div key={message.id || i} className={'flex '+(message.direction==='outbound'?'justify-end':'justify-start')}><div className={'max-w-[88%] rounded-2xl px-3 py-2.5 '+(message.direction==='outbound'?'rounded-br-md bg-violet-600/30 text-violet-50':'rounded-bl-md border border-white/[.07] bg-[#172137] text-slate-100')}><p className="whitespace-pre-wrap break-words text-xs leading-5">{message.text || 'Media message'}</p><p className="mt-1 text-right text-[9px] text-slate-500">{message.direction==='outbound'?'You':'WhatsApp'} · {stamp(message.timestamp)}</p></div></div>) : <p className="py-12 text-center text-xs text-slate-500">No cached messages in this conversation.</p>}
           </div>
