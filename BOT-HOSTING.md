@@ -40,7 +40,7 @@ Recommended:
 - `BAILEYS_LOG_LEVEL=silent`
 - `SERVER_REGISTRY_JSON=[]`
 
-Optional display metadata: set `HOSTING_CPU_LIMIT_PERCENT`, `HOSTING_MEMORY_LIMIT_MB`, and `HOSTING_STORAGE_LIMIT_MB` only to the limits currently shown in the Bot-Hosting panel. Set `HOSTING_REGION` or `HOSTING_COUNTRY` only when the provider explicitly shows those values. The API deliberately reports unknown values as not exposed rather than inventing server specifications.
+Optional display metadata (matching the deployment panel values you supplied at the time of migration): `HOSTING_CPU_LIMIT_PERCENT=15`, `HOSTING_MEMORY_LIMIT_MB=256`, and `HOSTING_STORAGE_LIMIT_MB=512`. These variables only label the limits in the dashboard; they do not allocate resources. Update them if the hosting plan changes. Set `HOSTING_REGION` or `HOSTING_COUNTRY` only when the provider explicitly shows those values. The API deliberately reports unknown values as not exposed rather than inventing server specifications.
 
 Do not create or override `SERVER_PORT`; it is assigned by Bot-Hosting.
 
