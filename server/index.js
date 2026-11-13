@@ -13,11 +13,13 @@ const os = require('node:os');
 const whatsapp = require('./whatsapp');
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.SERVER_PORT || process.env.PORT || 3000);
 const DATA_DIR = path.resolve(process.env.PLATFORM_DATA_DIR || './platform_data');
 const SESSION_DIR = path.join(DATA_DIR, 'sessions');
 const JWT_SECRET = process.env.JWT_SECRET;
 const SERVICE = 'wanna-cry-thanxiee-api';
+const HOST_PROVIDER = process.env.HOSTING_PROVIDER || (process.env.RENDER ? 'Render' : 'Unknown');
+const HOST_REGION = process.env.HOSTING_REGION || process.env.RENDER_REGION || null;
 
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
   console.error('JWT_SECRET must be set to a random value of at least 32 characters.');
@@ -245,19 +247,20 @@ app.post('/sessions/:id/restart', auth, async (req, res) => {
 app.get('/runtime', auth, (_req, res) => {
   const memory = process.memoryUsage();
   res.json({
-    platform: process.env.RENDER ? 'Render' : process.platform,
-    provider: process.env.RENDER ? 'Render' : 'Unknown',
-    region: process.env.RENDER_REGION || null,
-    location: process.env.RENDER_REGION || null,
+    platform: HOST_PROVIDER,
+    provider: HOST_PROVIDER,
+    region: HOST_REGION,
+    location: HOST_REGION,
     node: process.version,
     operating_system: os.type() + ' ' + os.release(),
     architecture: os.arch(),
-    cpu_cores: os.cpus().length,
+    cpu_cores_visible: os.cpus().length,
+    cpu_limit_percent: process.env.HOSTING_CPU_LIMIT_PERCENT ? Number(process.env.HOSTING_CPU_LIMIT_PERCENT) : null,
     load_average: os.loadavg(),
     uptime_seconds: Math.floor(process.uptime()),
     memory: { rss: memory.rss, heapTotal: memory.heapTotal, heapUsed: memory.heapUsed, external: memory.external },
-    total_memory_bytes: os.totalmem(),
-    free_memory_bytes: os.freemem(),
+    memory_limit_bytes: process.env.HOSTING_MEMORY_LIMIT_MB ? Number(process.env.HOSTING_MEMORY_LIMIT_MB) * 1024 * 1024 : null,
+    storage_limit_mb: process.env.HOSTING_STORAGE_LIMIT_MB ? Number(process.env.HOSTING_STORAGE_LIMIT_MB) : null,
     max_sessions_per_account: Math.max(1, Number(process.env.MAX_SESSIONS_PER_USER || 3)),
     bot_name: process.env.BOT_NAME || 'WANNA-CRY THANXIEE',
     prefix: process.env.BOT_PREFIX || '.',
@@ -274,9 +277,11 @@ app.get('/analytics', auth, (req, res) => {
 app.get('/servers', auth, (_req, res) => {
   const configured = serverRegistry().map(item => ({ ...item, status: item.status || 'unverified', verified: false }));
   const current = {
-    id: 'current-api', name: 'WhatsApp API + Baileys worker', provider: 'Render',
-    region: process.env.RENDER_REGION || 'Not exposed', country: 'Not exposed', location: process.env.RENDER_REGION || 'Not exposed',
-    cpu: os.cpus().length + ' visible logical core(s)', ram: Math.round(os.totalmem() / 1024 / 1024) + ' MiB visible host memory', storage: 'Not exposed by runtime',
+    id: 'current-api', name: 'WhatsApp API + Baileys worker', provider: HOST_PROVIDER,
+    region: HOST_REGION || 'Not exposed by host', country: process.env.HOSTING_COUNTRY || 'Not exposed by host', location: HOST_REGION || 'Not exposed by host',
+    cpu: process.env.HOSTING_CPU_LIMIT_PERCENT ? process.env.HOSTING_CPU_LIMIT_PERCENT + '% allocated' : 'Not exposed by host',
+    ram: process.env.HOSTING_MEMORY_LIMIT_MB ? process.env.HOSTING_MEMORY_LIMIT_MB + ' MiB allocated' : 'Not exposed by host',
+    storage: process.env.HOSTING_STORAGE_LIMIT_MB ? process.env.HOSTING_STORAGE_LIMIT_MB + ' MiB allocated' : 'Not exposed by host',
     operating_system: os.type() + ' ' + os.release(), status: 'online', verified: true,
     note: whatsapp.runningCount() + ' Baileys worker(s) active in this API instance.'
   };
