@@ -255,6 +255,8 @@ async function startSession(options) {
   try { return await entry.ready; }
   catch (error) {
     entry.closing = true;
+    clearTimeout(entry.reconnectTimer);
+    clearInterval(entry.schedulerTimer);
     active.delete(id);
     try { sock.end(error); } catch (_) {}
     throw error;
