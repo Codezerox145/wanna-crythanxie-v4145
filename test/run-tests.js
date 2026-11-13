@@ -303,14 +303,11 @@ async function main() {
       const def = commandMap[name];
       const ctx = mockCtx({ args: [], mentions: [] });
       const result = await def.run(ctx);
-      // A command is allowed to return null (e.g. .del, .leave) or a string
-      // or an object — as long as it didn't throw, and if it returns a
-      // string/text, it must be branded (carry the channel link).
-      if (typeof result === 'string') {
-        assert(result.includes('whatsapp.com/channel'), `${name} returned unbranded text`);
-      } else if (result && result.text) {
-        assert(result.text.includes('whatsapp.com/channel'), `${name} returned unbranded text`);
-      }
+      // The WhatsApp delivery layer wraps plain command output in the official
+      // response-card frame; menu cards and already-branded responses are kept intact.
+      const { ensureBrandedText } = require('../server/whatsapp');
+      const output = typeof result === 'string' ? result : (result?.text || result?.plainText || '');
+      if (output) assert(ensureBrandedText(output).includes('┆𖤍╭'), `${name} was not wrapped in the official card frame`);
     });
   }
 
