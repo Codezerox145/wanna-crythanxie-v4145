@@ -46,7 +46,7 @@ function ensureBrandedText(value) {
   const text = String(value || '');
   if (!text.trim() || text.includes('┆𖤍╭')) return text;
   const { brandedReply } = require('../lib/brand');
-  return brandedReply('BOT RESPONSE', text.split(/\\r?\\n/), { marker: '✧' });
+  return brandedReply('BOT RESPONSE', text.split(String.fromCharCode(10)), { marker: '✧' });
 }
 
 async function sendCommandResult(sock, jid, result, db) {
