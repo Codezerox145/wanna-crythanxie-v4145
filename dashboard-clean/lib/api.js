@@ -88,6 +88,7 @@ export const api = {
   analytics: () => request('/analytics'),
   servers: () => request('/servers'),
   groups: sessionId => request('/groups?sessionId=' + encodeURIComponent(sessionId)),
+  groupInvite: (sessionId, groupJid) => request('/groups/invite', { method: 'POST', body: { sessionId, groupJid } }),
   createPoll: (sessionId, groupJid, question, options, selectableCount = 1) => request('/polls/create', { method: 'POST', body: { sessionId, groupJid, question, options, selectableCount } }),
   chatConversations: () => request('/chat/conversations'),
   chatMessages: (sessionId, chatJid) => request('/chat/messages?sessionId=' + encodeURIComponent(sessionId) + '&chatJid=' + encodeURIComponent(chatJid)),
