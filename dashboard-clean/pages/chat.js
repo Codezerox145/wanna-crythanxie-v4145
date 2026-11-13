@@ -59,9 +59,10 @@ export default function ChatCentre() {
   const filtered = useMemo(() => conversations.filter(item => chatName(item.chat_jid).toLowerCase().includes(search.toLowerCase()) || String(item.last_message || '').toLowerCase().includes(search.toLowerCase())), [conversations, search])
   function openNewChat(e) {
     e.preventDefault()
-    const phone = newPhone.replace(/\\D/g, '')
-    if (!newSession || phone.length < 8 || phone.length > 15) { setError('Choose a connected account and enter an international number with 8–15 digits.'); return }
-    setSelected({ session_id: newSession, chat_jid: phone + '@s.whatsapp.net', last_message: '', timestamp: Date.now(), direction: 'outbound' })
+    const phone = newPhone.replace(/[^0-9]/g, '')
+    const sessionId = newSession || sessions[0]?.id || ''
+    if (!sessionId || phone.length < 8 || phone.length > 15) { setError('Choose a connected account and enter an international number with 8–15 digits.'); return }
+    setSelected({ session_id: sessionId, chat_jid: phone + '@s.whatsapp.net', last_message: '', timestamp: Date.now(), direction: 'outbound' })
     setMessages([]); setDraft(''); setError(''); setNewChat(false); setNewPhone('')
   }
   async function send(e) {
