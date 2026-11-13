@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Layout from '../../components/Layout'
 import { useAuthGuard } from '../../lib/useAuthGuard'
 import Link from 'next/link'
@@ -8,11 +8,10 @@ import { api } from '../../lib/api'
 const FEATURES = {
   advertising: { title: 'Advertising', icon: '◈', status: 'Coming Soon', detail: 'Advertising tools are not available yet. This module will be enabled after campaign management and advertiser services are integrated.', items: ['Campaign creation','Advertiser management','Ad placements','Campaign analytics'] },
   chat: { title: 'Chat Centre', icon: '◌', status: 'Available', detail: 'The live inbox reads conversations captured by your connected WhatsApp sessions and sends replies through Baileys. WhatsApp provides encrypted transport between WhatsApp endpoints; the dashboard cache is not an independent end-to-end encrypted vault.', items: ['Live conversation inbox','Search conversations and message previews','Refresh and read recent message history','Send replies from an online WhatsApp session'] },
-  polls: { title: 'Polls & Channels', icon: '▤', status: 'Coming Soon', detail: 'The dashboard poll builder and channel management tools are planned for a future release. Existing WhatsApp group controls continue to work through supported bot commands.', items: ['Visual poll builder','Poll results and voting summaries','WhatsApp channel publishing','Scheduled announcements'] },
+  polls: { title: 'Polls & Channels', icon: '▤', status: 'WhatsApp group polls available', detail: 'Create native WhatsApp polls in groups where your connected bot account is a member. Channel publishing is not exposed by the current Baileys client, so this page provides safe channel-link sharing rather than pretending to publish posts.', items: ['Load groups from a connected WhatsApp session','Create and send native WhatsApp group polls','Share a WhatsApp Channel link','Channel publishing requires a supported official channel integration'] },
   vip: { title: 'VIP Centre', icon: '♛', status: 'Supporter verification', detail: 'VIP unlock keys are issued by the owner. To qualify for a supporter OTP, use your own GitHub account to STAR and FORK the official repository. Both actions are checked against GitHub before a code is issued.', items: ['Step 1 · Star the official repository','Step 2 · Fork the official repository','Step 3 · Verify your GitHub username here','Step 4 · Send your one-time code to the owner','Step 5 · Contact the owner to request a VIP unlock key'], commands: ['.vipmenu — owner VIP console','.genpass 1h|24h|7d — owner generates a temporary passlock','.vipunlock <passlock> — owner unlocks the protected console','.passinfo — owner checks unlock status','.revokepass — owner revokes a passlock','.viplock — owner locks VIP controls','.vipaudit — owner reviews security events'] },
   media: { title: 'Media Tools', icon: '▧', status: 'Bot commands available', detail: 'Media utilities run through the WhatsApp bot command registry. Send a supported command to the bot with the relevant media attached or URL supplied.', items: ['Download and conversion commands','Sticker tools','Image utilities','Text extraction and OCR'], commands: ['.downloadmenu',' .sticker',' .removebg',' .ocr',' .video',' .instagram'] },
   help: { title: 'FAQ & Help', icon: '?', status: 'Help resources available', detail: 'Use the verified project resources and common bot commands. Never share your WhatsApp pairing code, session files or account password with anyone.', items: ['Pairing: WhatsApp → Settings → Linked Devices → Link a device','Enter the pairing code on your phone','Check API and bot health','Use the official channel for project announcements'], commands: ['.menu',' .allmenu',' .alive',' .ping',' .health',' .reportbug'] },
-  payments: { title: 'Payments & Billing', icon: '＄', status: 'Coming Soon', detail: 'Payment processing, invoices, subscriptions and billing history are not active yet. No payment is being collected through this dashboard.', items: ['Secure payment gateway','Invoices and receipts','Subscription billing','Payment history and reconciliation'] },
   owner: { title: 'Owner Panel', icon: '♛', status: 'Owner only', detail: 'Open the secure owner workspace to review platform health and registered accounts. Sign in with the configured owner email.', items: ['Owner-only access','Account overview','System readiness','Infrastructure and session shortcuts'] }
 }
 async function copyText(value) {
@@ -31,11 +30,21 @@ export default function FeaturePage() {
   const [githubUsername, setGithubUsername] = useState('')
   const [otp, setOtp] = useState('')
   const [verifying, setVerifying] = useState(false)
+  const [sessions, setSessions] = useState([])
+  const [selectedSession, setSelectedSession] = useState('')
+  const [groups, setGroups] = useState([])
+  const [selectedGroup, setSelectedGroup] = useState('')
+  const [question, setQuestion] = useState('')
+  const [optionsText, setOptionsText] = useState('')
+  const [pollBusy, setPollBusy] = useState(false)
   const feature = FEATURES[router.query.slug] || null
   const commands = useMemo(() => (feature?.commands || []).map(value => value.trim()).filter(value => value.toLowerCase().includes(query.toLowerCase())), [feature, query])
   if (!user || !router.isReady) return null
   if (!feature) return <Layout title="Feature not found"><div className="rounded-2xl border border-white/10 bg-[#10182b] p-6"><h2 className="text-lg font-bold">Feature not found</h2><Link href="/overview" className="mt-4 inline-block text-sm text-violet-300">Return to dashboard</Link></div></Layout>
   const available = feature.status.toLowerCase().includes('available') || feature.status.toLowerCase().includes('commands') || feature.status.includes('Supporter verification')
+  useEffect(() => { if (user && router.query.slug === 'polls') api.listSessions().then(result => { const ready=(result.sessions||[]).filter(s=>s.status==='online'); setSessions(ready); if(ready[0]) setSelectedSession(ready[0].id) }).catch(e=>setNotice(e.message)) }, [user, router.query.slug])
+  useEffect(() => { if(selectedSession) api.groups(selectedSession).then(result=>{setGroups(result.groups||[]);setSelectedGroup(result.groups?.[0]?.id||'')}).catch(e=>setNotice(e.message)); else {setGroups([]);setSelectedGroup('')} }, [selectedSession])
+  async function createPoll(e) { e.preventDefault(); setPollBusy(true); setNotice(''); try { const options=optionsText.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean); const result=await api.createPoll(selectedSession,selectedGroup,question,options); setNotice(result.message||'Poll sent.'); setQuestion(''); setOptionsText('') } catch(e) { setNotice(e.message||'Poll could not be sent.') } finally { setPollBusy(false) } }
   async function verifySupport() {
     setVerifying(true); setNotice(''); setOtp('')
     try { const result = await api.verifySupporter(githubUsername.trim()); setOtp(result.otp); setNotice(result.message) }
@@ -50,6 +59,20 @@ export default function FeaturePage() {
     <div className="mb-6"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">Platform module</p><h2 className="mt-2 text-2xl font-bold text-white">{feature.icon} {feature.title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">{feature.detail}</p></div>
     <section className="max-w-4xl rounded-2xl border border-white/[.08] bg-[#10182b] p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold text-slate-400">Integration status</p><p className="mt-1 text-lg font-bold text-white">{feature.status}</p></div><span className={'rounded-full px-3 py-1.5 text-[10px] font-bold ' + (available ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300')}>{available ? 'AVAILABLE' : 'INFORMATION'}</span></div>
+      {router.query.slug === 'polls' && <div className="mt-6 rounded-2xl border border-cyan-400/20 bg-[#0b1222] p-4 sm:p-5">
+        <h3 className="text-sm font-bold text-white">Create a WhatsApp group poll</h3>
+        <p className="mt-1 text-xs text-slate-400">Choose an online bot session and one of its live groups. Polls are sent as native WhatsApp poll messages.</p>
+        <form onSubmit={createPoll} className="mt-4 space-y-3">
+          <label className="block text-xs font-semibold text-slate-200">Connected WhatsApp session<select value={selectedSession} onChange={e=>setSelectedSession(e.target.value)} required className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#10182b] px-3 py-3 text-sm text-white"><option value="">Select session</option>{sessions.map(s=><option key={s.id} value={s.id}>{s.label||'+'+s.phone_number}</option>)}</select></label>
+          <label className="block text-xs font-semibold text-slate-200">WhatsApp group<select value={selectedGroup} onChange={e=>setSelectedGroup(e.target.value)} required className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#10182b] px-3 py-3 text-sm text-white"><option value="">Select group</option>{groups.map(g=><option key={g.id} value={g.id}>{g.subject} · {g.participants} members</option>)}</select></label>
+          <label className="block text-xs font-semibold text-slate-200">Poll question<input value={question} onChange={e=>setQuestion(e.target.value)} required maxLength={255} placeholder="What should we work on next?" className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#10182b] px-3 py-3 text-sm text-white placeholder:text-slate-400"/></label>
+          <label className="block text-xs font-semibold text-slate-200">Options · one per line<textarea value={optionsText} onChange={e=>setOptionsText(e.target.value)} required rows={4} placeholder={'Option one\\nOption two'} className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#10182b] px-3 py-3 text-sm text-white placeholder:text-slate-400"/></label>
+          <button disabled={pollBusy||!sessions.length||!groups.length} className="rounded-xl bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 px-5 py-3 text-xs font-bold text-white disabled:opacity-40">{pollBusy?'Sending poll…':'Send group poll'}</button>
+          {!sessions.length&&<p className="text-xs text-amber-200">No online WhatsApp sessions are available. Pair a device and connect it first.</p>}
+          {sessions.length>0&&!groups.length&&<p className="text-xs text-amber-200">No groups were returned for this session. Confirm the bot account belongs to a WhatsApp group.</p>}
+        </form>
+        <div className="mt-5 border-t border-white/10 pt-4"><h4 className="text-xs font-bold text-white">WhatsApp Channels</h4><p className="mt-1 text-xs leading-5 text-slate-400">The current Baileys integration cannot reliably publish channel updates. Use the official channel to follow and share announcements.</p><a href="https://whatsapp.com/channel/0029VbE9KJvJkK73C7RNvP2z" target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white">Open official channel ↗</a></div>
+      </div>}
       {router.query.slug === 'vip' && <div className="mt-6 rounded-2xl border border-violet-400/20 bg-violet-500/[.06] p-4 sm:p-5">
         <h3 className="text-sm font-bold text-white">Verify GitHub supporter status</h3>
         <p className="mt-1 text-xs leading-5 text-slate-400">Your account must both star and fork the official repository. GitHub is checked live. OTP is issued only when both checks pass.</p>
