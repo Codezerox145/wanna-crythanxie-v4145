@@ -17,7 +17,7 @@ const NAV = [
   { href: '/features/polls', label: 'Polls & Channels', icon: '▤' },
   { href: '/settings', label: 'Bot Settings', icon: '⚙' },
   { href: '/features/vip', label: 'VIP Centre', icon: '♛' },
-  { href: '/features/shadow', label: 'Shadow Enforcement', icon: '⬡', tag: 'Owner' },
+  { href: '/features/shadow', label: 'Shadow Enforcement', icon: '⬡', tag: 'Owner', ownerOnly: true },
   { href: '/features/media', label: 'Media Tools', icon: '▧' },
   { href: '/features/help', label: 'FAQ & Help', icon: '?' },
   { href: '/owner', label: 'Owner Panel', icon: '♛', tag: 'Owner', ownerOnly: true }
