@@ -11,15 +11,7 @@ const REPO = process.env.NEXT_PUBLIC_GITHUB_REPO || 'https://github.com/Codezero
 const NAV = [
   { href: '/overview', label: 'Dashboard', icon: '▦', group: 'Workspace' },
   { href: '/sessions', label: 'Bot Management', icon: '▣' },
-  { href: '/servers', label: 'Servers', icon: '▤' },
-  { href: '/overview#statistics', label: 'Statistics', icon: '▥' },
-  { href: '/chat', label: 'Chat Centre', icon: '▣' },
-  { href: '/features/polls', label: 'Polls & Channels', icon: '▤' },
-  { href: '/settings', label: 'Bot Settings', icon: '⚙' },
-  { href: '/features/vip', label: 'VIP Centre', icon: '♛' },
-  { href: '/features/shadow', label: 'Shadow Enforcement', icon: '⬡', tag: 'Owner', ownerOnly: true },
-  { href: '/features/media', label: 'Media Tools', icon: '▧' },
-  { href: '/features/help', label: 'FAQ & Help', icon: '?' },
+  { href: '/settings', label: 'Settings', icon: '⚙' },
   { href: '/owner', label: 'Owner Panel', icon: '♛', tag: 'Owner', ownerOnly: true }
 ]
 function Brand({ compact = false }) {
@@ -73,7 +65,6 @@ export default function Layout({ children, title }) {
         <div className="ml-auto flex items-center gap-2">
           <span className={'hidden rounded-full border px-3 py-1.5 text-[11px] font-semibold sm:inline-flex ' + (apiState === 'online' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : apiState === 'offline' ? 'border-rose-500/20 bg-rose-500/10 text-rose-300' : 'border-amber-500/20 bg-amber-500/10 text-amber-200')}><i className={'mr-2 mt-1 h-1.5 w-1.5 rounded-full ' + (apiState === 'online' ? 'bg-emerald-400' : apiState === 'offline' ? 'bg-rose-400' : 'bg-amber-300')} /> API {apiState === 'online' ? 'Online' : apiState === 'offline' ? 'Offline' : 'Checking'}</span>
 
-          <a href={REPO + '/fork'} target="_blank" rel="noreferrer" aria-label="Fork WANNA-CRY THANXIEE" title="Fork repository" className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-slate-300 transition hover:border-violet-400/40 hover:text-white"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true"><path d="M7 3h3v7.2l7.1-4.1 1.5 2.6-7.1 4.1 7.1 4.1-1.5 2.6L10 15.4V22H7V3Z"/></svg></a><a href={REPO} target="_blank" rel="noreferrer" aria-label="Star WANNA-CRY THANXIEE" title="Open repository to star" className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white transition hover:brightness-110"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true"><path d="m12 2 3.1 6.3 7 1-5.1 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5.1-4.9 7-1L12 2Z"/></svg></a>
           <button onClick={signOut} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5 md:hidden">Exit</button>
         </div>
       </header>
