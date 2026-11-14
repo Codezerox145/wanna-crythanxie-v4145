@@ -12,8 +12,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 
 /* Premium blended tech surfaces and accessible form contrast */
-:root { --tech-violet: #8b5cf6; --tech-blue: #2563eb; --tech-cyan: #06b6d4; --tech-magenta: #d946ef; }
-body { background: radial-gradient(ellipse at 12% 0%, rgba(91,33,182,.16), transparent 38%), radial-gradient(ellipse at 92% 10%, rgba(8,145,178,.10), transparent 34%), #070b18; color: #f8fafc; }
+:root { --tech-violet: #7c3aed; --tech-blue: #312e81; --tech-cyan: #6366f1; --tech-magenta: #c026d3; }
+body { background: radial-gradient(ellipse at 12% 0%, rgba(109,40,217,.20), transparent 38%), radial-gradient(ellipse at 92% 10%, rgba(192,38,211,.08), transparent 34%), #070b18; color: #f8fafc; }
 input, select, textarea { color: #fff !important; background-color: #0b1222; }
 input::placeholder, textarea::placeholder { color: #94a3b8 !important; opacity: 1; }
 input:where([type="checkbox"],[type="radio"]) { accent-color: #a855f7; }
