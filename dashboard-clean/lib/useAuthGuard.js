@@ -1,21 +1,29 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { getUser } from './api'
+import { api, getUser, setToken, setUser } from './api'
 
-// A dashboard identity is valid only when both the user profile and bearer
-// token are present. The API remains authoritative and redirects on 401.
+// Automatically issue a guest session so the dashboard opens without signup.
 export function useAuthGuard() {
   const router = useRouter()
   const [user, setUserState] = useState(undefined)
 
   useEffect(() => {
-    const currentUser = getUser()
-    if (!currentUser) {
-      setUserState(null)
-      router.replace('/login')
-    } else {
-      setUserState(currentUser)
+    let active = true
+    async function openWorkspace() {
+      const existing = getUser()
+      if (existing) { if (active) setUserState(existing); return }
+      try {
+        const result = await api.guest()
+        if (!active) return
+        setToken(result.token, true)
+        setUser(result.user)
+        setUserState(result.user)
+      } catch (_) {
+        if (active) setUserState(null)
+      }
     }
+    openWorkspace()
+    return () => { active = false }
   }, [router])
 
   return user
