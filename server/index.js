@@ -228,17 +228,27 @@ app.post('/sessions', auth, async (req, res) => {
   };
   sessions.push(session);
   writeStore('sessions', sessions);
+  // Return the session immediately; Baileys connects and requests the code in the background.
+  whatsapp.startSession({
+    id, phoneNumber, ...paths,
+    onUpdate: patch => updateSession(id, patch),
+    onMessage: message => recordMessage(message)
+  }).catch(error => {
+    updateSession(id, { status: 'error', pairing_code: null, error: String(error.message || 'Unable to start WhatsApp pairing.').slice(0, 240) });
+  });
+  return res.status(201).json({ sessionId: id, ...publicSession(session) });
+});
+
+app.post('/sessions/:id/pairing-code', auth, async (req, res) => {
+  const session = readStore('sessions', []).find(item => item.id === req.params.id && item.user_id === req.user.id);
+  if (!session) return res.status(404).json({ error: 'Session not found.' });
+  if (session.status === 'online') return res.status(409).json({ error: 'This WhatsApp device is already connected.' });
   try {
-    const result = await whatsapp.startSession({
-      id, phoneNumber, ...paths,
-      onUpdate: patch => updateSession(id, patch),
-      onMessage: message => recordMessage(message)
-    });
-    const latest = readStore('sessions', []).find(item => item.id === id) || session;
-    return res.status(201).json({ sessionId: id, ...publicSession({ ...latest, ...result }) });
+    const code = await whatsapp.refreshPairingCode(session.id);
+    const updated = updateSession(session.id, { status: 'pairing', pairing_code: code, error: null, last_seen_at: new Date().toISOString() });
+    return res.json({ ok: true, pairing_code: code, session: publicSession(updated || session) });
   } catch (error) {
-    updateSession(id, { status: 'error', error: String(error.message || 'Unable to start WhatsApp pairing.').slice(0, 240) });
-    return res.status(502).json({ error: 'Could not start WhatsApp pairing: ' + String(error.message || 'connection failed').slice(0, 180), sessionId: id });
+    return res.status(409).json({ error: String(error.message || 'Could not refresh the WhatsApp pairing code.') });
   }
 });
 
