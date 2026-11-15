@@ -202,7 +202,7 @@ async function startSession(options) {
   });
 
   const entry = {
-    id, sock, authDir, dataDir, phoneNumber: String(phoneNumber || '').replace(/\\D/g, ''),
+    id, sock, authDir, dataDir, phoneNumber: String(phoneNumber || '').replace(/\D/g, ''),
     onUpdate, onMessage, reconnectTimer: null, schedulerTimer: null,
     closing: false, ready: null, pairingRequested: false,
     resolveReady: null, rejectReady: null
