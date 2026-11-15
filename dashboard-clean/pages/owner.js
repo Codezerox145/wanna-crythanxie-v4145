@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { api } from '../lib/api'
@@ -21,9 +22,11 @@ export default function OwnerPanel() {
     } catch (e) { setError(e.message || 'Owner tools could not be loaded.') }
     finally { setLoading(false) }
   }
-  useEffect(() => { if (user?.is_owner) load() }, [user])
-  if (!user) return null
-  if (!user.is_owner) return <Layout title="Owner Panel"><section className="mx-auto max-w-2xl rounded-2xl border border-amber-400/20 bg-[#10182b] p-6"><div className="text-3xl text-amber-300">♛</div><h2 className="mt-3 text-xl font-bold text-white">Owner access required</h2><p className="mt-2 text-sm leading-6 text-slate-400">Sign in with the owner email configured in the Render API environment variable <code>OWNER_EMAILS</code>. Normal user accounts cannot access owner tools.</p><Link href="/settings" className="mt-5 inline-flex rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-violet-200">Account settings</Link></section></Layout>
+  useEffect(() => {
+    if (user && !user.is_owner) router.replace('/overview')
+    if (user?.is_owner) load()
+  }, [user, router])
+  if (!user || !user.is_owner) return null
   return <Layout title="Owner Control Panel">
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-amber-300">Restricted · owner only</p><h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">Owner Control Panel</h2><p className="mt-1 text-sm text-slate-400">Platform oversight, user accounts, supporter verification and service readiness.</p></div><button onClick={load} disabled={loading} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-slate-200 disabled:opacity-50">{loading ? 'Refreshing…' : 'Refresh overview'}</button></div>
     {error && <div role="alert" className="mb-5 rounded-xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm text-rose-200">{error}<p className="mt-1 text-xs text-rose-200/70">If you are the owner, add your exact dashboard signup email to OWNER_EMAILS on Render, then sign out and sign in again.</p></div>}
