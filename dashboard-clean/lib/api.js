@@ -77,6 +77,7 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 
 export const api = {
   health: () => request('/health', { auth: false }),
+  guest: () => request('/auth/guest', { method: 'POST', body: {}, auth: false }),
   signup: (email, password) => request('/auth/signup', { method: 'POST', body: { email, password }, auth: false }),
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password }, auth: false }),
   listSessions: () => request('/sessions'),
