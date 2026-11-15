@@ -323,7 +323,17 @@ async function sendPoll(id, jid, question, options, selectableCount = 1) {
   return entry.sock.sendMessage(jid, { poll: { name: title, values: cleanOptions, selectableCount: Math.max(1, Math.min(cleanOptions.length, Number(selectableCount) || 1)) } });
 }
 
+async function refreshPairingCode(id) {
+  const entry = active.get(id);
+  if (!entry) throw new Error('WhatsApp connection is still starting. Wait a few seconds and retry.');
+  if (entry.sock?.user?.id) throw new Error('This WhatsApp device is already connected.');
+  if (!entry.phoneNumber) throw new Error('The WhatsApp phone number is missing. Start a new pairing session.');
+  const code = await entry.sock.requestPairingCode(entry.phoneNumber);
+  entry.onUpdate?.({ status: 'pairing', pairing_code: code, last_seen_at: new Date().toISOString(), error: null });
+  return code;
+}
+
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText };
+module.exports = { startSession, refreshPairingCode, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText };
