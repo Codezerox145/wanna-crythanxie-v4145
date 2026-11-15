@@ -16,12 +16,15 @@ export default function PairingCode() {
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const refreshLock = useRef(false)
+  const pollLock = useRef(false)
 
   useEffect(() => {
     if (!user || !id) return
     let alive = true
     let timer
     async function poll() {
+      if (pollLock.current) return
+      pollLock.current = true
       try {
         const data = await api.getSession(id)
         if (!alive) return
@@ -33,6 +36,8 @@ export default function PairingCode() {
         }
       } catch (err) {
         if (alive) setError(err.message || 'Could not check pairing status.')
+      } finally {
+        pollLock.current = false
       }
     }
     poll()
@@ -65,21 +70,21 @@ export default function PairingCode() {
     <Layout title="Pairing code">
       <div className="mx-auto max-w-md rounded-2xl border border-slate-100 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <img src={BOT_AVATAR} alt={BOT_NAME} className="mx-auto mb-3 h-16 w-16 rounded-2xl border border-slate-200 object-cover shadow-sm dark:border-slate-700" />
-        <p className="mb-1 text-sm text-slate-400">WhatsApp linking code</p>
+        <p className="mb-1 text-sm text-slate-500 dark:text-slate-400">WhatsApp device-linking code</p>
         {error && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/30">{error}</p>}
         {session?.error && <p role="alert" className="mb-3 text-sm text-red-500">{session.error}</p>}
         {code ? (
           <>
             <p className="my-4 text-4xl font-bold tracking-[0.3em] text-brand-600">{code}</p>
-            <p className="mb-4 text-xs text-slate-400">Enter this code in WhatsApp now. If WhatsApp rejects it or it expires, request a fresh code below.</p>
+            <p className="mb-4 text-xs text-slate-400">Enter this 8-digit code in WhatsApp immediately. If WhatsApp says it is invalid or expired, request a new code.</p>
             <button type="button" onClick={refreshCode} disabled={refreshing || session?.status === 'online'} className="mb-5 w-full rounded-xl border border-brand-600/30 px-4 py-2.5 text-sm font-semibold text-brand-600 disabled:opacity-50">
               {refreshing ? 'Refreshing code…' : 'Get a fresh code'}
             </button>
           </>
         ) : (
           <div className="my-6">
-            <p className="text-sm font-semibold text-slate-200">{isStarting ? 'Connecting to WhatsApp…' : 'Waiting for a pairing code…'}</p>
-            <p className="mt-2 text-xs text-slate-400">This page updates automatically. You do not need to restart the session.</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{isStarting ? 'Connecting to WhatsApp…' : session?.status === 'error' ? 'Pairing could not start' : 'Waiting for WhatsApp to issue your code…'}</p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Keep this page open. We will show your 8-digit code as soon as WhatsApp is ready.</p>
           </div>
         )}
         {session?.status === 'online' && <p className="mb-4 text-sm font-semibold text-emerald-500">Connected. Opening Bot Management…</p>}
@@ -88,10 +93,10 @@ export default function PairingCode() {
           <p className="font-semibold">Link your device</p>
           <ol className="list-inside list-decimal space-y-1 text-slate-500 dark:text-slate-400">
             <li>Open WhatsApp → Settings → Linked Devices.</li>
-            <li>Choose Link a Device → Link with phone number instead.</li>
-            <li>Enter the code shown above.</li>
+            <li>Tap Link a Device, then choose Link with phone number instead.</li>
+            <li>Enter the 8-digit code shown above on your phone.</li>
           </ol>
-          <p className="pt-1 text-xs text-slate-400">Keep this page open until the status changes to Connected.</p>
+          <p className="pt-1 text-xs text-slate-400">Do not close this page while WhatsApp is linking. It will change to Connected automatically.</p>
         </div>
       </div>
     </Layout>
