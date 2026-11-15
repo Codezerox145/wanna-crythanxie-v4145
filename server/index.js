@@ -141,6 +141,23 @@ function auth(req, res, next) {
   }
 }
 
+// Anonymous guest access: visitors can open the dashboard without registering.
+// A short-lived guest identity scopes each visitor's WhatsApp sessions.
+const guestAttempts = new Map();
+app.post('/auth/guest', (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const recent = (guestAttempts.get(ip) || []).filter(time => now - time < 60 * 60 * 1000);
+  if (recent.length >= 12) return res.status(429).json({ error: 'Too many guest sessions from this connection. Please try again later.' });
+  recent.push(now); guestAttempts.set(ip, recent);
+  const id = crypto.randomUUID();
+  const user = { id, email: 'guest+' + id + '@guest.local', password_hash: null, guest: true, created_at: new Date().toISOString() };
+  const users = readStore('users', []);
+  users.push(user);
+  writeStore('users', users.slice(-10000));
+  return res.status(201).json({ token: issueToken(user), user: safeUser(user) });
+});
+
 app.post('/auth/signup', async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
