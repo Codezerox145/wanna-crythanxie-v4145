@@ -44,7 +44,7 @@ export default function Layout({ children, title }) {
     const timer = setInterval(check, 30000)
     return () => { alive = false; clearInterval(timer) }
   }, [])
-  function signOut() { logout(); router.replace('/login') }
+  function signOut() { logout(); router.replace('/') }
   const isActive = item => router.pathname === item.href || (item.href !== '/overview#statistics' && router.pathname.startsWith(item.href + '/')) || (item.href === '/overview#statistics' && router.asPath.includes('#statistics'))
   const visibleNav = NAV.filter(x => !x.ownerOnly || user?.is_owner)
   return <div className="min-h-screen bg-[#070b18] text-slate-100 md:flex">
@@ -53,7 +53,7 @@ export default function Layout({ children, title }) {
       <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-slate-600">Main menu</p>
       <nav className="flex-1 space-y-1 overflow-y-auto">{visibleNav.map(item => <NavLink key={item.href} item={item} active={isActive(item)} />)}</nav>
       <div className="mt-4 rounded-2xl border border-white/[.08] bg-white/[.035] p-3">
-        <div className="flex items-center gap-2"><div className="grid h-8 w-8 place-items-center rounded-xl bg-violet-500/15 text-violet-300">{user?.email?.[0]?.toUpperCase() || 'U'}</div><div className="min-w-0"><p className="truncate text-xs font-bold text-white">{user?.email || 'Your account'}</p><p className="text-[10px] text-slate-500">Workspace account</p></div></div>
+        <div className="flex items-center gap-2"><div className="grid h-8 w-8 place-items-center rounded-xl bg-violet-500/15 text-violet-300">{user?.email?.[0]?.toUpperCase() || 'U'}</div><div className="min-w-0"><p className="truncate text-xs font-bold text-white">{user?.guest ? 'Guest workspace' : (user?.email || 'Your account')}</p><p className="text-[10px] text-slate-500">Temporary guest access</p></div></div>
         <button onClick={signOut} className="mt-3 w-full rounded-lg border border-white/10 px-3 py-2 text-left text-xs font-semibold text-slate-400 hover:bg-white/5 hover:text-white">↪ Sign out</button>
       </div>
     </aside>
