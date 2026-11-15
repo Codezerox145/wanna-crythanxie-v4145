@@ -16,7 +16,7 @@ const {
 } = require('@whiskeysockets/baileys');
 
 const active = new Map();
-const logger = pino({ level: process.env.BAILEYS_LOG_LEVEL || 'silent' });
+const logger = pino({ level: process.env.BAILEYS_LOG_LEVEL || 'warn' });
 const root = path.resolve(__dirname, '..');
 const avatarPath = path.join(root, 'bot-avatar.jpg');
 
