@@ -244,6 +244,16 @@ app.post('/sessions/:id/pairing-code', auth, async (req, res) => {
   if (!session) return res.status(404).json({ error: 'Session not found.' });
   if (session.status === 'online') return res.status(409).json({ error: 'This WhatsApp device is already connected.' });
   try {
+    if (!whatsapp.isRunning(session.id)) {
+      const paths = sessionPaths(session.id);
+      updateSession(session.id, { status: 'starting', pairing_code: null, error: null });
+      whatsapp.startSession({
+        id: session.id, phoneNumber: session.phone_number, ...paths,
+        onUpdate: patch => updateSession(session.id, patch),
+        onMessage: message => recordMessage(message)
+      }).catch(error => updateSession(session.id, { status: 'error', pairing_code: null, error: String(error.message || 'Unable to restart WhatsApp pairing.').slice(0, 240) }));
+      return res.status(202).json({ ok: true, starting: true, message: 'A fresh WhatsApp connection is starting. This page will update automatically.' });
+    }
     const code = await whatsapp.refreshPairingCode(session.id);
     const updated = updateSession(session.id, { status: 'pairing', pairing_code: code, error: null, last_seen_at: new Date().toISOString() });
     return res.json({ ok: true, pairing_code: code, session: publicSession(updated || session) });
