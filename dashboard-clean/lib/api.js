@@ -85,6 +85,7 @@ export const api = {
   createSession: (phoneNumber, region, label, communitySupportConfirmed = false) => request('/sessions', { method: 'POST', body: { phoneNumber, region, label, communitySupportConfirmed } }),
   deleteSession: id => request('/sessions/' + encodeURIComponent(id), { method: 'DELETE' }),
   restartSession: id => request('/sessions/' + encodeURIComponent(id) + '/restart', { method: 'POST' }),
+  refreshPairingCode: id => request('/sessions/' + encodeURIComponent(id) + '/pairing-code', { method: 'POST', body: {} }),
   runtime: () => request('/runtime'),
   analytics: () => request('/analytics'),
   servers: () => request('/servers'),
