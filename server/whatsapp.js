@@ -176,21 +176,45 @@ async function startSession(options) {
   if (active.has(id)) return active.get(id).ready;
   fs.mkdirSync(authDir, { recursive: true });
   fs.mkdirSync(dataDir, { recursive: true });
+
   const state = await useMultiFileAuthState(authDir);
   let version;
-  try { ({ version } = await fetchLatestBaileysVersion()); } catch (_) {}
+  try {
+    const latest = await Promise.race([
+      fetchLatestBaileysVersion(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Baileys version lookup timed out')), 8000))
+    ]);
+    version = latest.version;
+  } catch (error) {
+    logger.warn({ err: error }, 'Using bundled Baileys protocol version');
+  }
+
   const sock = makeWASocket({
     auth: state.state,
-    version,
+    ...(version ? { version } : {}),
     logger,
-    browser: Browsers.ubuntu('Chrome'),
     printQRInTerminal: false,
     markOnlineOnConnect: false,
     syncFullHistory: false,
-    generateHighQualityLinkPreview: false
+    generateHighQualityLinkPreview: false,
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000
   });
-  const entry = { id, sock, authDir, dataDir, phoneNumber, onUpdate, onMessage, reconnectTimer: null, schedulerTimer: null, closing: false, ready: null };
+
+  const entry = {
+    id, sock, authDir, dataDir, phoneNumber: String(phoneNumber || '').replace(/\\D/g, ''),
+    onUpdate, onMessage, reconnectTimer: null, schedulerTimer: null,
+    closing: false, ready: null, pairingRequested: false,
+    resolveReady: null, rejectReady: null
+  };
   active.set(id, entry);
+
+  entry.ready = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('WhatsApp did not become ready in time. Check the API connection and try again.')), 35000);
+    entry.resolveReady = value => { clearTimeout(timeout); resolve(value); };
+    entry.rejectReady = error => { clearTimeout(timeout); reject(error); };
+  });
+
   sock.ev.on('creds.update', state.saveCreds);
   const dbForSchedules = require('../lib/db');
   const { brandedReply } = require('../lib/brand');
@@ -199,6 +223,7 @@ async function startSession(options) {
     dbForSchedules.runWithDataDir(dataDir, () => scheduler.tick(sock, brandedReply)).catch(error => logger.warn({ err: error }, 'Scheduled message tick failed'));
   }, 15000);
   entry.schedulerTimer.unref?.();
+
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
     for (const message of messages || []) await processIncoming(sock, entry, message);
@@ -221,39 +246,58 @@ async function startSession(options) {
       }
     });
   });
+
   sock.ev.on('connection.update', update => {
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
+
+    // Baileys emits "connecting" / a QR event when its socket is ready for
+    // requestPairingCode. Calling it on a fixed delay after construction can
+    // race the websocket handshake and produce invalid/expired codes.
+    if (!state.state.creds.registered && entry.phoneNumber && !entry.pairingRequested && (connection === 'connecting' || Boolean(qr))) {
+      entry.pairingRequested = true;
+      setTimeout(async () => {
+        try {
+          const code = await sock.requestPairingCode(entry.phoneNumber);
+          onUpdate?.({ status: 'pairing', pairing_code: code, last_seen_at: new Date().toISOString(), error: null });
+          entry.resolveReady?.({ pairing_code: code, status: 'pairing' });
+        } catch (error) {
+          logger.error({ err: error, sessionId: id }, 'WhatsApp pairing-code request failed');
+          onUpdate?.({ status: 'error', pairing_code: null, error: String(error.message || 'WhatsApp rejected the pairing-code request.').slice(0, 240) });
+          entry.rejectReady?.(error);
+        }
+      }, 1500);
+    }
+
     if (connection === 'open') {
       const number = String(sock.user?.id || '').split(':')[0].split('@')[0];
-      entry.onUpdate?.({ status: 'online', phone_number: number || phoneNumber, connected_at: new Date().toISOString(), last_seen_at: new Date().toISOString(), pairing_code: null, error: null });
+      onUpdate?.({ status: 'online', phone_number: number || entry.phoneNumber, connected_at: new Date().toISOString(), last_seen_at: new Date().toISOString(), pairing_code: null, error: null });
+      entry.resolveReady?.({ status: 'online' });
     }
+
     if (connection === 'close' && !entry.closing) {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
-      entry.onUpdate?.({ status: loggedOut ? 'logged_out' : 'reconnecting', last_seen_at: new Date().toISOString(), error: loggedOut ? 'WhatsApp logged this device out. Pair it again.' : null });
-      if (!loggedOut) {
+      onUpdate?.({
+        status: loggedOut ? 'logged_out' : 'reconnecting',
+        last_seen_at: new Date().toISOString(),
+        error: loggedOut ? 'WhatsApp logged this device out. Start a new pairing session.' : null
+      });
+      if (loggedOut) {
+        entry.rejectReady?.(new Error('WhatsApp logged this device out. Start a new pairing session.'));
+      } else {
         clearTimeout(entry.reconnectTimer);
         entry.reconnectTimer = setTimeout(() => {
           active.delete(id);
-          startSession(options).catch(error => onUpdate?.({ status: 'error', error: error.message }));
+          startSession(options).catch(error => onUpdate?.({ status: 'error', pairing_code: null, error: String(error.message || 'WhatsApp reconnect failed.').slice(0, 240) }));
         }, 2500);
         entry.reconnectTimer.unref?.();
       }
     }
   });
 
-  entry.ready = (async () => {
-    if (!state.state.creds.registered && phoneNumber) {
-      // Allow the Baileys websocket handshake to settle before requesting a pairing code.
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      const code = await sock.requestPairingCode(phoneNumber);
-      onUpdate?.({ status: 'pairing', pairing_code: code, last_seen_at: new Date().toISOString(), error: null });
-      return { pairing_code: code, status: 'pairing' };
-    }
-    return { status: state.state.creds.registered ? 'connecting' : 'waiting' };
-  })();
-  try { return await entry.ready; }
-  catch (error) {
+  try {
+    return await entry.ready;
+  } catch (error) {
     entry.closing = true;
     clearTimeout(entry.reconnectTimer);
     clearInterval(entry.schedulerTimer);
