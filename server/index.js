@@ -182,7 +182,6 @@ app.post('/sessions', auth, async (req, res) => {
   const label = String(req.body?.label || '').trim().slice(0, 60);
   if (phoneNumber.length < 8 || phoneNumber.length > 15) return res.status(400).json({ error: 'Enter a valid international WhatsApp number including its country calling code (8–15 digits).' });
   if (!['auto', 'africa', 'europe', 'north_america', 'south_america', 'asia_pacific', 'middle_east', 'backup'].includes(region)) return res.status(400).json({ error: 'Choose a supported server region.' });
-  if (req.body?.communitySupportConfirmed !== true) return res.status(400).json({ error: 'Confirm the project support step before requesting pairing.' });
 
   const sessions = readStore('sessions', []);
   const owned = sessions.filter(item => item.user_id === req.user.id);
