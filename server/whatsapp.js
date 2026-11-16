@@ -7,7 +7,7 @@ const pino = require('pino');
 const {
   default: makeWASocket,
   useMultiFileAuthState,
-  fetchLatestBaileysVersion,
+  fetchLatestWaWebVersion,
   DisconnectReason,
   Browsers,
   downloadMediaMessage,
@@ -178,15 +178,20 @@ async function startSession(options) {
   fs.mkdirSync(dataDir, { recursive: true });
 
   const state = await useMultiFileAuthState(authDir);
+  // Read the live WhatsApp Web client revision. The Baileys-bundled
+  // revision can lag behind WhatsApp and may generate codes that the phone
+  // rejects with "Couldn't link device".
   let version;
   try {
-    const latest = await Promise.race([
-      fetchLatestBaileysVersion(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Baileys version lookup timed out')), 8000))
-    ]);
+    const latest = await fetchLatestWaWebVersion({ timeout: 8000 });
+    if (!latest?.isLatest || !Array.isArray(latest.version) || latest.version.length !== 3 || !latest.version.every(Number.isInteger)) {
+      throw latest?.error || new Error('WhatsApp Web did not return a valid client revision');
+    }
     version = latest.version;
+    logger.info({ version }, 'Using live WhatsApp Web protocol version');
   } catch (error) {
-    logger.warn({ err: error }, 'Using bundled Baileys protocol version');
+    logger.error({ err: error }, 'Could not retrieve a current WhatsApp Web protocol version');
+    throw new Error('WhatsApp pairing is temporarily unavailable because the current WhatsApp Web version could not be verified. Please retry shortly.');
   }
 
   const sock = makeWASocket({
@@ -275,8 +280,15 @@ async function startSession(options) {
     }
 
     if (connection === 'close' && !entry.closing) {
-      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const disconnectError = lastDisconnect?.error;
+      const statusCode = disconnectError?.output?.statusCode || disconnectError?.statusCode || null;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
+      logger.warn({
+        sessionId: id,
+        statusCode,
+        disconnectMessage: String(disconnectError?.message || 'Unknown disconnect').slice(0, 240),
+        disconnectData: disconnectError?.data || disconnectError?.output?.payload || null
+      }, 'WhatsApp connection closed');
       onUpdate?.({
         status: loggedOut ? 'logged_out' : 'reconnecting',
         last_seen_at: new Date().toISOString(),
