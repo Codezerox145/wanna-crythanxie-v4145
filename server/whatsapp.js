@@ -253,7 +253,7 @@ async function startSession(options) {
     // Baileys emits "connecting" / a QR event when its socket is ready for
     // requestPairingCode. Calling it on a fixed delay after construction can
     // race the websocket handshake and produce invalid/expired codes.
-    if (!state.state.creds.registered && entry.phoneNumber && !entry.pairingRequested && (connection === 'connecting' || Boolean(qr))) {
+    if (!state.state.creds.registered && entry.phoneNumber && !entry.pairingRequested && Boolean(qr)) {
       entry.pairingRequested = true;
       setTimeout(async () => {
         try {
