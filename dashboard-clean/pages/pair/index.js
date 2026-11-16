@@ -51,8 +51,13 @@ export default function Pair() {
 
   async function handleSubmit(e) {
     e.preventDefault(); setError('')
-    const digits = number.replace(/\D/g, '')
+    let digits = number.replace(/\D/g, '')
     const dial = countryCode.replace(/\D/g, '')
+    // Mobile numbers are commonly entered with a domestic trunk zero (e.g. 0771).
+    // Remove it when a separate international calling code is selected (+263 -> 263771...).
+    if (digits.startsWith('0')) digits = digits.replace(/^0+/, '')
+    // Also tolerate users pasting the full international number into the local-number field.
+    if (digits.startsWith(dial)) digits = digits.slice(dial.length)
     if (!digits || !/^\d{1,4}$/.test(dial) || (dial + digits).length < 8 || (dial + digits).length > 15) {
       setError('Enter a valid international WhatsApp number (8–15 digits including country code).')
       return
