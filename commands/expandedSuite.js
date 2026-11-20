@@ -285,7 +285,7 @@ async function runExpanded(name, ctx) {
   if (MOD_ACTIONS.has(name)) return groupAction(name, ctx);
   if (['ai','gpt','askai','explain','rewrite','essay','brainstorm','math','chat','codeai','summarize','translate','imagine'].includes(name)) {
     if (!arg && !ctx.quotedText) return usageGuide(name, `.${name} <text>`, `.${name} explain machine learning`);
-    try { return brandedReply(name.toUpperCase(), [await askGemini(arg || ctx.quotedText, PRESETS.chat)]); } catch (e) { return brandedReply('AI NOT CONFIGURED', ['Text AI requires a configured free/open model endpoint or GEMINI_API_KEY.']); }
+    try { return brandedReply(name.toUpperCase(), [await askGemini(arg || ctx.quotedText, PRESETS[name] || PRESETS.chat)]); } catch (e) { return brandedReply('AI UNAVAILABLE', [e.code === 'AI_NOT_CONFIGURED' ? 'AI is not configured on this bot yet.' : 'The AI service could not complete your request.', e.code === 'AI_NOT_CONFIGURED' ? 'Ask the owner to configure Ollama or GEMINI_API_KEY.' : 'Please try again shortly.']); }
   }
   if (name.startsWith('text')) return textUtility(name, arg);
   if (name.startsWith('media')) return mediaUtility(name, ctx);
