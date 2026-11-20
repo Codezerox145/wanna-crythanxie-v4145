@@ -82,7 +82,7 @@ export const api = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password }, auth: false }),
   listSessions: () => request('/sessions'),
   getSession: id => request('/sessions/' + encodeURIComponent(id)),
-  createSession: (phoneNumber, region, label, communitySupportConfirmed = false) => request('/sessions', { method: 'POST', body: { phoneNumber, region, label, communitySupportConfirmed } }),
+  createSession: (phoneNumber, region, label) => request('/sessions', { method: 'POST', body: { phoneNumber, region, label } }),
   deleteSession: id => request('/sessions/' + encodeURIComponent(id), { method: 'DELETE' }),
   restartSession: id => request('/sessions/' + encodeURIComponent(id) + '/restart', { method: 'POST' }),
   refreshPairingCode: id => request('/sessions/' + encodeURIComponent(id) + '/pairing-code', { method: 'POST', body: {} }),
