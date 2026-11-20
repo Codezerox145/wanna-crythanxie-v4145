@@ -158,17 +158,8 @@ app.post('/auth/guest', (req, res) => {
   return res.status(201).json({ token: issueToken(user), user: safeUser(user) });
 });
 
-app.post('/auth/signup', async (req, res) => {
-  const email = String(req.body?.email || '').trim().toLowerCase();
-  const password = String(req.body?.password || '');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
-  if (password.length < 8 || password.length > 128) return res.status(400).json({ error: 'Password must be between 8 and 128 characters.' });
-  const users = readStore('users', []);
-  if (users.some(user => user.email === email)) return res.status(409).json({ error: 'An account with this email already exists.' });
-  const user = { id: crypto.randomUUID(), email, password_hash: await bcrypt.hash(password, 12), created_at: new Date().toISOString() };
-  users.push(user);
-  writeStore('users', users);
-  return res.status(201).json({ token: issueToken(user), user: safeUser(user) });
+app.post('/auth/signup', (_req, res) => {
+  return res.status(410).json({ error: 'Account registration is temporarily disabled. The dashboard is currently open to guests.' });
 });
 
 app.post('/auth/login', async (req, res) => {
