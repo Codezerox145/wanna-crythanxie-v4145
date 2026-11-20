@@ -86,7 +86,7 @@ async function main() {
   assert.equal(guest.status, 201)
   const loggedIn = await guest.json()
   assert.ok(loggedIn.token)
-  assert.equal(loggedIn.user.guest, true)
+  assert.match(loggedIn.user.email, /@guest\\.local$/)
   assert.equal(loggedIn.user.is_owner, false)
   assert.equal(Object.hasOwn(loggedIn.user, 'password_hash'), false)
 
