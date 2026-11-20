@@ -73,17 +73,6 @@ export default function Pair() {
     }
   }
 
-  async function continueToPairing() {
-    if (!githubUsername.trim()) { setCommunityError('Enter your GitHub username to verify your fork and star.'); return }
-    if (!communityConfirmed) { setCommunityError('Confirm that you completed both GitHub actions.'); return }
-    setLoading(true); setCommunityError('')
-    try {
-      await api.verifySupporter(githubUsername.trim(), false)
-      const { sessionId } = await api.createSession(pendingPhone, region, '', true)
-      router.push(`/pair/${sessionId}`)
-    } catch (err) { setCommunityError(err.message) }
-    finally { setLoading(false) }
-  }
 
   return <Layout title="Pair a number">
     <div className="mx-auto max-w-xl overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
