@@ -194,7 +194,6 @@ app.get('/sessions/:id', auth, (req, res) => {
 });
 
 app.post('/sessions', auth, async (req, res) => {
-  if (req.body?.communitySupportConfirmed !== true) return res.status(400).json({ error: 'Confirm the community support step before starting WhatsApp pairing.' });
   const phoneNumber = String(req.body?.phoneNumber || '').replace(/\D/g, '');
   const region = String(req.body?.region || 'auto').toLowerCase();
   const label = String(req.body?.label || '').trim().slice(0, 60);
