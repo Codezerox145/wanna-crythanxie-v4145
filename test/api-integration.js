@@ -74,50 +74,21 @@ async function main() {
   const deniedOrigin = await fetch(base + '/health', { headers: { Origin: 'https://untrusted.example' } })
   assert.equal(deniedOrigin.headers.get('access-control-allow-origin'), null)
 
-  const invalidEmail = await fetch(base + '/auth/signup', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'not-an-email', password: 'strong-password' })
-  })
-  assert.equal(invalidEmail.status, 400)
-
-  const shortPassword = await fetch(base + '/auth/signup', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'first@example.com', password: 'short' })
-  })
-  assert.equal(shortPassword.status, 400)
-
-  const signup = await fetch(base + '/auth/signup', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: ' First@Example.com ', password: 'strong-password-123' })
-  })
-  assert.equal(signup.status, 201)
-  const created = await signup.json()
-  assert.ok(created.token)
-  assert.equal(created.user.email, 'first@example.com')
-  assert.equal(created.user.is_owner, false)
-  assert.equal(Object.hasOwn(created.user, 'hash'), false)
-
-  const duplicate = await fetch(base + '/auth/signup', {
+  const disabledSignup = await fetch(base + '/auth/signup', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: 'first@example.com', password: 'strong-password-123' })
   })
-  assert.equal(duplicate.status, 409)
+  assert.equal(disabledSignup.status, 410)
 
-  const badLogin = await fetch(base + '/auth/login', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'first@example.com', password: 'incorrect-password' })
+  const guest = await fetch(base + '/auth/guest', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
   })
-  assert.equal(badLogin.status, 401)
-
-  const login = await fetch(base + '/auth/login', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'FIRST@example.com', password: 'strong-password-123' })
-  })
-  assert.equal(login.status, 200)
-  const loggedIn = await login.json()
+  assert.equal(guest.status, 201)
+  const loggedIn = await guest.json()
   assert.ok(loggedIn.token)
-  assert.equal(loggedIn.user.id, created.user.id)
+  assert.equal(loggedIn.user.guest, true)
   assert.equal(loggedIn.user.is_owner, false)
+  assert.equal(Object.hasOwn(loggedIn.user, 'password_hash'), false)
 
   const invalidSession = await fetch(base + '/sessions', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + loggedIn.token },
@@ -125,31 +96,10 @@ async function main() {
   })
   assert.equal(invalidSession.status, 400)
 
-  const unconfirmedSession = await fetch(base + '/sessions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + loggedIn.token },
-    body: JSON.stringify({ phoneNumber: '263780706629', region: 'auto', communitySupportConfirmed: false })
-  })
-  assert.equal(unconfirmedSession.status, 400)
-
   const normalOwnerPanel = await fetch(base + '/owner/overview', {
     headers: { Authorization: 'Bearer ' + loggedIn.token }
   })
   assert.equal(normalOwnerPanel.status, 403)
-
-  const ownerSignup = await fetch(base + '/auth/signup', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'owner@example.com', password: 'owner-password-123' })
-  })
-  assert.equal(ownerSignup.status, 201)
-  const ownerAccount = await ownerSignup.json()
-  assert.equal(ownerAccount.user.is_owner, true)
-  const ownerOverview = await fetch(base + '/owner/overview', {
-    headers: { Authorization: 'Bearer ' + ownerAccount.token }
-  })
-  assert.equal(ownerOverview.status, 200)
-  const ownerData = await ownerOverview.json()
-  assert.equal(ownerData.users_total, 2)
-  assert.equal(ownerData.environment.server_registry_configured, true)
 
   const registry = await fetch(base + '/servers', {
     headers: { Authorization: 'Bearer ' + loggedIn.token }
@@ -178,7 +128,7 @@ async function main() {
   assert.equal(runtime.status, 200)
   assert.equal((await runtime.json()).max_sessions_per_account, 3)
 
-  console.log('API integration checks passed: health, CORS, signup/login, owner-role gating, owner overview, server registry, sessions and runtime.')
+  console.log('API integration checks passed: health, CORS, guest access, disabled registration, owner-role gating, server registry, sessions and runtime.')
 }
 
 main()
