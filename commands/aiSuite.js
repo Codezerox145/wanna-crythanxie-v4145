@@ -12,7 +12,7 @@ function aiCommand(name, systemPreset, exampleSuffix) {
       const prompt = ctx.args.join(' ') || ctx.quotedText;
       if (!prompt) return usageGuide(name, `.${name} <text>`, `.${name} ${exampleSuffix}`);
       try {
-        const answer = await askGemini(prompt, systemPreset);
+        const answer = await askGemini(prompt, systemPreset || PRESETS.chat);
         return brandedReply(name.toUpperCase(), [answer]);
       } catch (e) {
         return brandedReply('AI UNAVAILABLE', [
