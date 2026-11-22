@@ -50,7 +50,7 @@ export default function ShadowEnforcement() {
   const [query,setQuery] = useState('')
   const [copied,setCopied] = useState('')
   const groups = useMemo(() => GROUPS.map(group => ({...group,commands:group.commands.filter(item => item.join(' ').toLowerCase().includes(query.toLowerCase()))})).filter(group=>group.commands.length),[query])
-  if (!user) return null
+  if (user === undefined) return <Layout title="Workspace"><div className="grid min-h-64 place-items-center text-sm text-slate-500">Opening your workspace…</div></Layout>
   if (!user.is_owner) return <Layout title="Access restricted"><div className="rounded-2xl border border-rose-400/20 bg-[#10182b] p-6"><h2 className="font-bold text-white">Owner access required</h2><p className="mt-2 text-sm text-slate-400">This centre is restricted to the configured owner account.</p></div></Layout>
   async function copyCommand(value) { try { await copy(value); setCopied(value); setTimeout(()=>setCopied(''),1600) } catch (_) { setCopied('Clipboard unavailable') } }
   return <Layout title="Shadow Enforcement Centre">
