@@ -1,5 +1,5 @@
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || '').trim().replace(/\/+$/, '')
-const REQUEST_TIMEOUT_MS = 60000
+const REQUEST_TIMEOUT_MS = 15000
 
 function getToken() {
   if (typeof window === 'undefined') return null
@@ -61,8 +61,8 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
     response = await fetch(url.toString(), { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, signal: controller.signal, mode: 'cors', cache: 'no-store', credentials: 'omit' })
   } catch (error) {
     if (error && error.name === 'AbortError') throw new Error('This is taking longer than expected. Please try again.')
-    if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('Your device appears to be offline. Reconnect to the internet and try again.')
-    throw new Error('We could not reach the bot service. Check your internet connection and try again. If this continues, the service may be restarting.')
+    if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('You appear to be offline. Reconnect and your workspace will resume automatically.')
+    throw new Error('Connection interrupted. We are trying to restore your workspace. Please try again shortly.')
   } finally { clearTimeout(timer) }
   const contentType = response.headers.get('content-type') || ''
   const data = contentType.includes('application/json') ? await response.json().catch(() => ({})) : {}
