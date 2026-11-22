@@ -60,7 +60,7 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   } catch (error) {
     if (error && error.name === 'AbortError') throw new Error('The API did not respond within 60 seconds. Check the API service and /health endpoint, then retry.')
     if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('Your device appears to be offline. Reconnect to the internet and try again.')
-    throw new Error('Cannot reach the API at ' + API_BASE + '. Confirm the API service is running and DASHBOARD_ORIGIN includes this exact dashboard domain. Browser detail: ' + ((error && error.message) || 'Network request blocked'))
+    throw new Error('We could not reach the bot service. Check your internet connection and try again. If this continues, the service may be restarting.')
   } finally { clearTimeout(timer) }
   const contentType = response.headers.get('content-type') || ''
   const data = contentType.includes('application/json') ? await response.json().catch(() => ({})) : {}
@@ -69,9 +69,9 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
       logout()
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.assign('/login')
     }
-    throw new Error(data.error || 'The API returned HTTP ' + response.status + '.')
+    throw new Error(response.status >= 500 ? 'The bot service encountered a problem. Please try again shortly.' : (data.error || 'Your request could not be completed. Check the information and try again.'))
   }
-  if (!contentType.includes('application/json')) throw new Error('The API returned a non-JSON response. NEXT_PUBLIC_API_BASE must point to the API service, not the dashboard website.')
+  if (!contentType.includes('application/json')) throw new Error('The bot service returned an unexpected response. Please try again later or contact the administrator.')
   return data
 }
 
