@@ -503,7 +503,6 @@ app.post('/supporter/redeem-otp', auth, (req, res) => {
 app.get('/dashboard/metrics', auth, (req, res) => {
   const users = readStore('users', []);
   const sessions = readStore('sessions', []);
-  const messages = readStore('messages', []);
   const mine = sessions.filter(item => item.user_id === req.user.id);
   const online = sessions.filter(item => item.status === 'online');
   const pairing = sessions.filter(item => ['pairing', 'starting', 'connecting', 'reconnecting', 'qr', 'pending'].includes(String(item.status || '').toLowerCase()));
