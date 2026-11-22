@@ -27,6 +27,7 @@ export default function OwnerPanel() {
     if (user && !user.is_owner) router.replace('/overview')
     if (user?.is_owner) load()
   }, [user, router])
+  if (user === undefined) return <Layout title="Owner Control Panel"><div className="grid min-h-64 place-items-center text-sm text-slate-500">Opening your workspace…</div></Layout>
   if (!user || !user.is_owner) return null
   return <Layout title="Owner Control Panel">
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-amber-300">Restricted · owner only</p><h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">Owner Control Panel</h2><p className="mt-1 text-sm text-slate-400">Platform oversight, user accounts, supporter verification and service readiness.</p></div><button onClick={load} disabled={loading} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-slate-200 disabled:opacity-50">{loading ? 'Refreshing…' : 'Refresh overview'}</button></div>
