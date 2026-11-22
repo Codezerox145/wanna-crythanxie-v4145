@@ -46,7 +46,7 @@ export default function Pair() {
   }, [])
 
   const filtered = useMemo(() => countries.filter(c => (c.label + ' ' + c.code).toLowerCase().includes(query.toLowerCase())).slice(0, 120), [countries, query])
-  if (!user) return null
+  if (user === undefined) return <Layout title="Workspace"><div className="grid min-h-64 place-items-center text-sm text-slate-500">Opening your workspace…</div></Layout>
 
   async function handleSubmit(e) {
     e.preventDefault()
