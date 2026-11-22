@@ -27,7 +27,7 @@ export default function SessionDetail() {
       .catch((e) => setError(e.message))
   }, [user, id])
 
-  if (!user) return null
+  if (user === undefined) return <Layout title="Workspace"><div className="grid min-h-64 place-items-center text-sm text-slate-500">Opening your workspace…</div></Layout>
 
   async function handleRestart() {
     setError(''); setRestarting(true)
