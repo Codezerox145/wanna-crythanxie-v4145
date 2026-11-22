@@ -24,3 +24,15 @@ input:where([type="text"],[type="email"],[type="password"],[type="tel"]):focus, 
 .form-light select option { color: #0f172a; background: #fff; }
 .bg-black, .bg-orange-500, .bg-orange-600, .bg-amber-500, .bg-amber-600 { color: #fff !important; }
 .bg-black :is(p,span,strong,label,a,button), .bg-orange-500 :is(p,span,strong,label,a,button), .bg-orange-600 :is(p,span,strong,label,a,button), .bg-amber-500 :is(p,span,strong,label,a,button), .bg-amber-600 :is(p,span,strong,label,a,button) { color: #fff !important; }
+
+/* Responsive workspace guardrails */
+html, body, #__next { width: 100%; min-height: 100%; max-width: 100%; overflow-x: hidden; }
+img, svg, video, canvas { max-width: 100%; }
+button, a, input, select, textarea { touch-action: manipulation; }
+button, a { -webkit-tap-highlight-color: transparent; }
+@media (max-width: 640px) {
+  body { min-width: 320px; }
+  main { min-width: 0; }
+  table { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+}
