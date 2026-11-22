@@ -488,6 +488,30 @@ app.post('/supporter/redeem-otp', auth, (req, res) => {
   record.used = true; record.used_at = Date.now(); writeStore('supporter_otps', records);
   return res.json({ ok: true, message: 'Supporter OTP accepted. Contact the owner with your GitHub username to request a VIP unlock key.' });
 });
+
+app.get('/dashboard/metrics', auth, (req, res) => {
+  const users = readStore('users', []);
+  const sessions = readStore('sessions', []);
+  const messages = readStore('messages', []);
+  const mine = sessions.filter(item => item.user_id === req.user.id);
+  const online = sessions.filter(item => item.status === 'online');
+  const pairing = sessions.filter(item => ['pairing', 'starting', 'connecting', 'reconnecting', 'qr', 'pending'].includes(String(item.status || '').toLowerCase()));
+  const pairedUsers = new Set(online.map(item => item.user_id));
+  res.set('Cache-Control', 'no-store, max-age=0');
+  return res.json({
+    users_total: users.length,
+    paired_users: pairedUsers.size,
+    sessions_total: sessions.length,
+    sessions_online: online.length,
+    sessions_pairing: pairing.length,
+    sessions_offline: Math.max(0, sessions.length - online.length - pairing.length),
+    active_workers: whatsapp.runningCount(),
+    messages_total: messages.length,
+    my_sessions: mine.map(publicSession).sort((a, b) => new Date(b.last_seen_at || b.created_at) - new Date(a.last_seen_at || a.created_at)).slice(0, 20),
+    updated_at: new Date().toISOString()
+  });
+});
+
 app.get('/owner/overview', auth, ownerOnly, (_req, res) => {
   const users = readStore('users', []);
   const sessions = readStore('sessions', []);
