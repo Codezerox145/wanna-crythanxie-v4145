@@ -17,7 +17,7 @@ export default function SessionsPage() {
     finally { setRefreshing(false) }
   }, [])
   useEffect(() => { if (user) load() }, [user, load])
-  if (!user) return null
+  if (user === undefined) return <Layout title="Workspace"><div className="grid min-h-64 place-items-center text-sm text-slate-500">Opening your workspace…</div></Layout>
   return <Layout title="Sessions">
     <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-700">DEVICE MANAGEMENT</p><h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">WhatsApp sessions</h2><p className="mt-2 text-sm text-slate-500">View connection status and manage each linked device.</p></div><div className="flex gap-2"><button onClick={load} disabled={refreshing} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700">{refreshing ? 'Refreshing…' : 'Refresh'}</button><Link href="/pair" className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">＋ Pair a device</Link></div></div>
     {error && <div role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}<button onClick={load} className="ml-3 font-bold underline">Retry</button></div>}
