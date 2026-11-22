@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { api, getUser } from '../lib/api'
+import { getUser } from '../lib/api'
 
 const BOT_NAME = process.env.NEXT_PUBLIC_BOT_NAME || 'WANNA-CRY THANXIEE'
 const AVATAR = process.env.NEXT_PUBLIC_BOT_AVATAR_URL || 'https://raw.githubusercontent.com/Codezerox145/wanna-crythanxie-v4145/main/bot-avatar.jpg'
@@ -15,18 +15,7 @@ const NAV = [
 export default function Layout({ children, title }) {
   const router = useRouter()
   const [user, setUser] = useState(null)
-  const [apiState, setApiState] = useState('checking')
-  useEffect(() => {
-    setUser(getUser())
-    let active = true
-    const check = async () => {
-      try { await api.health(); if (active) setApiState('online') }
-      catch (_) { if (active) setApiState('offline') }
-    }
-    check()
-    const timer = setInterval(check, 30000)
-    return () => { active = false; clearInterval(timer) }
-  }, [])
+  useEffect(() => { setUser(getUser()) }, [])
   const visibleNav = NAV.filter(item => !item.ownerOnly || user?.is_owner)
   const active = href => router.pathname === href || router.pathname.startsWith(href + '/')
   return <div className="min-h-screen bg-[#080b16] text-slate-100 md:flex">
@@ -44,7 +33,6 @@ export default function Layout({ children, title }) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3 md:hidden"><img src={AVATAR} alt="" className="h-9 w-9 rounded-xl object-cover" /><div className="min-w-0"><p className="truncate text-xs font-extrabold text-white">{BOT_NAME}</p><p className="text-[9px] font-bold tracking-[.18em] text-violet-300">BOT DASHBOARD</p></div></div>
           <div className="hidden md:block"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-300">Workspace</p><h1 className="mt-0.5 text-base font-bold text-white">{title || 'Overview'}</h1></div>
-          <span className={'ml-auto inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold ' + (apiState === 'online' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : apiState === 'offline' ? 'border-rose-500/20 bg-rose-500/10 text-rose-300' : 'border-amber-500/20 bg-amber-500/10 text-amber-200')}><i className={'h-1.5 w-1.5 rounded-full ' + (apiState === 'online' ? 'bg-emerald-400' : apiState === 'offline' ? 'bg-rose-400' : 'bg-amber-300')}/>API {apiState}</span>
         </div>
         <nav className="mt-3 flex gap-1 overflow-x-auto md:hidden">{visibleNav.map(item => <Link key={item.href} href={item.href} className={'shrink-0 rounded-lg px-3 py-2 text-xs font-semibold ' + (active(item.href) ? 'bg-violet-600 text-white' : 'text-slate-400 hover:bg-white/5')}><span className="mr-1.5">{item.icon}</span>{item.label}</Link>)}</nav>
       </header>
