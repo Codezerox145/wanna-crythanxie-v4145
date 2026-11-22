@@ -37,7 +37,7 @@ export default function Settings() {
     localStorage.setItem('theme', next ? 'dark' : 'light')
   }
 
-  if (!user) return null
+  if (user === undefined) return <Layout title="Workspace"><div className="grid min-h-64 place-items-center text-sm text-slate-500">Opening your workspace…</div></Layout>
   const bytes = runtime?.memory || {}
   const mb = n => Math.round((n || 0) / 1024 / 1024)
 
