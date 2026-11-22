@@ -9,6 +9,7 @@ function Metric({ label, value, hint }) {
   return <div className="rounded-2xl border border-white/[.08] bg-[#10182b] p-4"><p className="text-xs text-slate-500">{label}</p><p className="mt-2 text-2xl font-black text-white">{value ?? '—'}</p>{hint && <p className="mt-1 text-[10px] text-slate-500">{hint}</p>}</div>
 }
 export default function OwnerPanel() {
+  const router = useRouter()
   const user = useAuthGuard()
   const [data, setData] = useState(null)
   const [users, setUsers] = useState([])
