@@ -10,6 +10,9 @@ const NAV = [
   { href: '/sessions', label: 'Sessions', icon: '▣' },
   { href: '/pair', label: 'Pairing', icon: '↗' },
   { href: '/chat', label: 'Chat centre', icon: '☏' },
+  { href: '/users', label: 'Find users', icon: '⌕' },
+  { href: '/feedback', label: 'Feedback', icon: '✎' },
+  { href: '/rate', label: 'Rate us', icon: '★' },
   { href: '/settings', label: 'Settings', icon: '⚙' },
   { href: '/owner', label: 'Owner panel', icon: '♛', ownerOnly: true }
 ]
