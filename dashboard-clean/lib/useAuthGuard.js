@@ -21,7 +21,7 @@ export function useAuthGuard() {
       } catch (error) {
         // Keep the interface visible when the API is temporarily unavailable.
         // Data actions will show the API error instead of rendering a blank page.
-        if (active) setUserState({ id: null, email: 'Guest workspace', is_guest: true, offline: true, connection_error: error?.message || 'API unavailable' })
+        if (active) setUserState({ id: null, email: 'Guest workspace', is_guest: true, offline: true })
       }
     }
     openWorkspace()
