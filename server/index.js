@@ -93,10 +93,19 @@ function updateSession(id, patch) {
   writeStore('sessions', sessions);
   return sessions[index];
 }
+function messageCount() {
+  const saved = readStore('message_count', null);
+  if (saved && Number.isInteger(saved.count) && saved.count >= 0) return saved.count;
+  const count = readStore('messages', []).length;
+  writeStore('message_count', { count });
+  return count;
+}
 function recordMessage(message) {
   const messages = readStore('messages', []);
   messages.push(message);
-  writeStore('messages', messages.slice(-10000));
+  const retained = messages.slice(-10000);
+  writeStore('messages', retained);
+  writeStore('message_count', { count: retained.length });
 }
 function sessionPaths(id) {
   const base = path.join(SESSION_DIR, id);
@@ -393,7 +402,9 @@ app.post('/chat/send', auth, async (req, res) => {
     await whatsapp.sendText(sessionId, chatJid, message);
     const messages = readStore('messages', []);
     messages.push({ id: crypto.randomUUID(), session_id: sessionId, chat_jid: chatJid, text: message, direction: 'outbound', timestamp: Date.now() });
-    writeStore('messages', messages.slice(-10000));
+    const retained = messages.slice(-10000);
+    writeStore('messages', retained);
+    writeStore('message_count', { count: retained.length });
     res.json({ ok: true });
   } catch (error) { res.status(503).json({ error: error.message || 'WhatsApp session is not connected.' }); }
 });
@@ -506,7 +517,7 @@ app.get('/dashboard/metrics', auth, (req, res) => {
     sessions_pairing: pairing.length,
     sessions_offline: Math.max(0, sessions.length - online.length - pairing.length),
     active_workers: whatsapp.runningCount(),
-    messages_total: messages.length,
+    messages_total: messageCount(),
     my_sessions: mine.map(publicSession).sort((a, b) => new Date(b.last_seen_at || b.created_at) - new Date(a.last_seen_at || a.created_at)).slice(0, 20),
     updated_at: new Date().toISOString()
   });
@@ -522,7 +533,7 @@ app.get('/owner/overview', auth, ownerOnly, (_req, res) => {
     sessions_total: sessions.length,
     sessions_online: sessions.filter(item => item.status === 'online').length,
     paired_users: new Set(sessions.filter(item => item.status === 'online').map(item => item.user_id)).size,
-    messages_total: readStore('messages', []).length,
+    messages_total: messageCount(),
     feedback_total: readStore('feedback', []).length,
     ratings_total: readStore('ratings', []).length,
     supporter_verifications: otp.filter(item => item.used).length,
