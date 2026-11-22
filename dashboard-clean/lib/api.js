@@ -10,6 +10,7 @@ export function setToken(token, remember = true) {
   localStorage.removeItem('token')
   sessionStorage.removeItem('token')
   if (token) (remember ? localStorage : sessionStorage).setItem('token', token)
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:changed'))
 }
 export function getUser() {
   if (typeof window === 'undefined' || !getToken()) return null
@@ -30,17 +31,18 @@ export function setUser(user) {
     const storage = getToken() && sessionStorage.getItem('token') ? sessionStorage : localStorage
     storage.setItem('user', JSON.stringify(user))
   }
+  window.dispatchEvent(new Event('auth:changed'))
 }
 export function getApiBase() { return API_BASE }
 
 function resolveApiUrl(path) {
-  if (!API_BASE) throw new Error('Dashboard API is not configured. Add NEXT_PUBLIC_API_BASE to your dashboard host environment using the public HTTPS URL of your API service, then rebuild/redeploy.')
+  if (!API_BASE) throw new Error('The workspace is reconnecting. Please try again shortly.')
   let base
   try { base = new URL(API_BASE) } catch {
-    throw new Error('The API address is invalid. Set NEXT_PUBLIC_API_BASE to the full public HTTPS API URL.')
+    throw new Error('The workspace is temporarily unavailable. Please try again shortly.')
   }
-  if (!['http:', 'https:'].includes(base.protocol) || !base.host) throw new Error('The API address must use http:// or https:// and include a hostname.')
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.protocol !== 'https:') throw new Error("The dashboard is using HTTPS but the API address is not. Set NEXT_PUBLIC_API_BASE to the API host public HTTPS URL.")
+  if (!['http:', 'https:'].includes(base.protocol) || !base.host) throw new Error('The workspace is temporarily unavailable. Please try again shortly.')
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.protocol !== 'https:') throw new Error('The workspace is temporarily unavailable. Please try again shortly.')
   return new URL(path, base.origin + '/')
 }
 
@@ -58,7 +60,7 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   try {
     response = await fetch(url.toString(), { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, signal: controller.signal, mode: 'cors', cache: 'no-store', credentials: 'omit' })
   } catch (error) {
-    if (error && error.name === 'AbortError') throw new Error('The API did not respond within 60 seconds. Check the API service and /health endpoint, then retry.')
+    if (error && error.name === 'AbortError') throw new Error('This is taking longer than expected. Please try again.')
     if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('Your device appears to be offline. Reconnect to the internet and try again.')
     throw new Error('We could not reach the bot service. Check your internet connection and try again. If this continues, the service may be restarting.')
   } finally { clearTimeout(timer) }
@@ -66,12 +68,14 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   const data = contentType.includes('application/json') ? await response.json().catch(() => ({})) : {}
   if (!response.ok) {
     if (response.status === 401 && auth) {
+      const hadToken = Boolean(getToken())
       logout()
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.assign('/login')
+      if (hadToken && typeof window !== 'undefined') window.location.replace('/overview')
+      throw new Error('Your workspace connection has expired. Reconnecting now…')
     }
-    throw new Error(response.status >= 500 ? 'The bot service encountered a problem. Please try again shortly.' : (data.error || 'Your request could not be completed. Check the information and try again.'))
+    throw new Error(response.status >= 500 ? 'This feature is temporarily unavailable. Please try again shortly.' : (data.error && !/stack|exception|internal server|ECONN|ENOENT|TypeError|ReferenceError/i.test(data.error) ? data.error : 'Your request could not be completed. Please check your details and try again.'))
   }
-  if (!contentType.includes('application/json')) throw new Error('The bot service returned an unexpected response. Please try again later or contact the administrator.')
+  if (!contentType.includes('application/json')) throw new Error('This feature is temporarily unavailable. Please try again later.')
   return data
 }
 
@@ -88,6 +92,7 @@ export const api = {
   refreshPairingCode: id => request('/sessions/' + encodeURIComponent(id) + '/pairing-code', { method: 'POST', body: {} }),
   runtime: () => request('/runtime'),
   analytics: () => request('/analytics'),
+  dashboardMetrics: () => request('/dashboard/metrics'),
   servers: () => request('/servers'),
   groups: sessionId => request('/groups?sessionId=' + encodeURIComponent(sessionId)),
   groupInvite: (sessionId, groupJid) => request('/groups/invite', { method: 'POST', body: { sessionId, groupJid } }),
