@@ -397,6 +397,43 @@ app.post('/chat/send', auth, async (req, res) => {
     res.json({ ok: true });
   } catch (error) { res.status(503).json({ error: error.message || 'WhatsApp session is not connected.' }); }
 });
+
+app.get('/community/users', auth, (req, res) => {
+  const query = String(req.query?.q || '').trim().toLowerCase().slice(0, 60);
+  const users = readStore('users', [])
+    .filter(user => user.id !== req.user.id)
+    .map(user => ({
+      id: user.id,
+      display_name: user.display_name || (user.guest ? 'Guest ' + String(user.id).slice(0, 5).toUpperCase() : String(user.email || 'Member').split('@')[0]),
+      role: isOwnerEmail(user.email) ? 'Owner' : (user.guest ? 'Guest' : 'Member'),
+      joined_at: user.created_at || null
+    }))
+    .filter(user => !query || (user.display_name + ' ' + user.role).toLowerCase().includes(query))
+    .slice(0, 100);
+  res.set('Cache-Control', 'no-store');
+  return res.json({ users, total: users.length });
+});
+app.post('/feedback', auth, (req, res) => {
+  const category = String(req.body?.category || 'Suggestion').trim().slice(0, 40);
+  const message = String(req.body?.message || '').trim().slice(0, 3000);
+  if (message.length < 8) return res.status(400).json({ error: 'Please enter at least 8 characters of feedback.' });
+  const rows = readStore('feedback', []);
+  rows.push({ id: crypto.randomUUID(), user_id: req.user.id, category, message, created_at: new Date().toISOString(), status: 'new' });
+  writeStore('feedback', rows.slice(-5000));
+  return res.status(201).json({ ok: true, message: 'Thank you. Your feedback has been submitted.' });
+});
+app.post('/ratings', auth, (req, res) => {
+  const rating = Number(req.body?.rating);
+  const review = String(req.body?.review || '').trim().slice(0, 1000);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return res.status(400).json({ error: 'Choose a rating from 1 to 5 stars.' });
+  const rows = readStore('ratings', []);
+  const existing = rows.findIndex(row => row.user_id === req.user.id);
+  const record = { user_id: req.user.id, rating, review, updated_at: new Date().toISOString() };
+  if (existing >= 0) rows[existing] = record; else rows.push(record);
+  writeStore('ratings', rows.slice(-5000));
+  return res.status(201).json({ ok: true, message: 'Thank you for rating WANNA-CRY THANXIEE.' });
+});
+
 app.post('/supporter/verify', auth, async (req, res) => {
   const username = String(req.body?.githubUsername || '').trim().replace(/^@/, '');
   if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(username)) return res.status(400).json({ error: 'Enter a valid GitHub username.' });
