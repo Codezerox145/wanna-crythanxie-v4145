@@ -85,8 +85,13 @@ async function processIncoming(sock, session, message) {
   // by the owner in their own WhatsApp "Message yourself" conversation.
   // Baileys IDs can include a device suffix (number:device@s.whatsapp.net),
   // so compare the normalized user part rather than the full JID.
-  const jidUser = value => String(value || '').split('@')[0].split(':')[0];
-  const isOwnChat = Boolean(sock.user?.id && jidUser(remoteJid) === jidUser(sock.user.id));
+  const jidUser = value => String(value || '').split('@')[0].split(':')[0].replace(/\\D/g, '');
+  const selfJids = [sock.user?.id, sock.user?.lid, sock.user?.phoneNumber].filter(Boolean);
+  const remoteUser = String(remoteJid).split('@')[0].split(':')[0];
+  const isOwnChat = selfJids.some(value => {
+    const candidate = String(value).split('@')[0].split(':')[0];
+    return candidate === remoteUser || (jidUser(candidate) && jidUser(candidate) === jidUser(remoteUser));
+  });
   if (msg.key?.fromMe && !isOwnChat) return;
   if (msg.key?.fromMe && remoteJid.endsWith('@g.us')) return;
 
@@ -158,8 +163,8 @@ async function processIncoming(sock, session, message) {
     const quotedMessage = contextInfo.quotedMessage || null;
     const quotedText = quotedMessage ? textFromMessage(quotedMessage) : null;
     const ctx = {
-      sock, msg, chatJid: remoteJid, isGroup, sender,
-      botJid: sock.user?.id || '', rawText,
+      sock, msg, messageContent: normalized, chatJid: remoteJid, isGroup, sender,
+      botJid: sock.user?.id || sock.user?.lid || '', rawText,
       args: [], mentions: contextInfo.mentionedJid || [],
       quotedParticipant: contextInfo.participant || null,
       quotedKey: contextInfo.stanzaId ? { id: contextInfo.stanzaId, remoteJid, participant: contextInfo.participant } : null,
