@@ -360,7 +360,7 @@ async function main() {
       participants: [{ id: owner, admin: 'admin' }, { id: target, admin: null }]
     });
     const result = await commandMap.ban.run(ctx);
-    assert(result.text.includes('BOT ADMIN REQUIRED'));
+    assert((typeof result === 'string' ? result : result.text).includes('BOT ADMIN REQUIRED'));
     assert.strictEqual(db.get('banned', group, []).length, 0);
     vip.lock(owner);
   });
@@ -381,7 +381,7 @@ async function main() {
     });
     ctx.sock.groupParticipantsUpdate = async () => [{ status: '403', content: 'not-authorized' }];
     const result = await commandMap.ban.run(ctx);
-    assert(result.text.includes('BAN FAILED'));
+    assert((typeof result === 'string' ? result : result.text).includes('BAN FAILED'));
     assert.strictEqual(db.get('banned', group, []).length, 0);
     vip.lock(owner);
   });
@@ -416,7 +416,7 @@ async function main() {
     assert.strictEqual(vip.unlock(owner, pass.passlock).ok, true);
     const ctx = mockCtx({
       sender: owner, isOwner: true, isAdmin: true, isBotAdmin: true,
-      mentions: ['263711111111@s.whatsapp.net'], args: ['forever']
+      mentions: ['263711111111@s.whatsapp.net'], args: ['@263711111111', 'forever']
     });
     const result = await commandMap.tempban.run(ctx);
     assert(result.includes('INVALID DURATION'));
