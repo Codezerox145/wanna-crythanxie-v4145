@@ -204,8 +204,10 @@ const commands = {
     category: 'shadow', hidden: true, usage: '.banhistory', example: '.banhistory',
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
-      const banned = db.get('banned', ctx.chatJid, []);
-      return brandedReply('BAN HISTORY', banned.length ? banned.map((b) => `@${b.jid.split('@')[0]} — ${b.reason}`) : ['No bans on record for this group.']);
+      const allBans = db.get('banned', ctx.chatJid, []);
+      const banned = allBans.filter(item => !item.expiresAt || Number(item.expiresAt) > Date.now());
+      if (banned.length !== allBans.length) db.set('banned', ctx.chatJid, banned);
+      return brandedReply('BAN HISTORY', banned.length ? banned.map(item => `@${String(item.jid || '').split('@')[0]} — ${item.reason}`) : ['No active bans on record for this group.']);
     }
   },
   baninfo: {
