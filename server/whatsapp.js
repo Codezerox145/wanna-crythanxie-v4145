@@ -79,7 +79,17 @@ async function sendCommandResult(sock, jid, result, db) {
 async function processIncoming(sock, session, message) {
   const msg = message;
   const remoteJid = msg.key?.remoteJid;
-  if (!remoteJid || remoteJid === 'status@broadcast' || msg.key?.fromMe) return;
+  if (!remoteJid || remoteJid === 'status@broadcast') return;
+
+  // Ignore messages sent by this bot to other chats, but allow commands typed
+  // by the owner in their own WhatsApp "Message yourself" conversation.
+  // Baileys IDs can include a device suffix (number:device@s.whatsapp.net),
+  // so compare the normalized user part rather than the full JID.
+  const jidUser = value => String(value || '').split('@')[0].split(':')[0];
+  const isOwnChat = Boolean(sock.user?.id && jidUser(remoteJid) === jidUser(sock.user.id));
+  if (msg.key?.fromMe && !isOwnChat) return;
+  if (msg.key?.fromMe && remoteJid.endsWith('@g.us')) return;
+
   const normalized = normalizeMessageContent(msg.message) || msg.message || {};
   const rawText = textFromMessage(normalized);
   const db = require('../lib/db');
