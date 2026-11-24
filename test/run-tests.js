@@ -134,6 +134,33 @@ async function main() {
     assert(card.body.length >= 3);
   });
 
+  check('group welcome and goodbye are OFF by default, including legacy implicit defaults', () => {
+    const db = require('../lib/db');
+    const welcome = require('../lib/welcome');
+    const group = 'welcome-default-test@g.us';
+    db.set('groups', group, {});
+    assert.strictEqual(welcome.getGroupSettings(group).welcomeOn, false);
+    assert.strictEqual(welcome.getGroupSettings(group).goodbyeOn, false);
+    db.set('groups', group, { welcomeOn: true, goodbyeOn: true });
+    assert.strictEqual(welcome.getGroupSettings(group).welcomeOn, false);
+    assert.strictEqual(welcome.getGroupSettings(group).goodbyeOn, false);
+    db.del('groups', group);
+  });
+
+  check('group welcome activates only after an explicit admin toggle', () => {
+    const db = require('../lib/db');
+    const welcome = require('../lib/welcome');
+    const group = 'welcome-opt-in-test@g.us';
+    db.set('groups', group, {});
+    welcome.setGroupSetting(group, { welcomeText: 'Hello {user}' });
+    assert.strictEqual(welcome.getGroupSettings(group).welcomeOn, false);
+    welcome.setGroupSetting(group, { welcomeOn: true });
+    assert.strictEqual(welcome.getGroupSettings(group).welcomeOn, true);
+    welcome.setGroupSetting(group, { welcomeOn: false });
+    assert.strictEqual(welcome.getGroupSettings(group).welcomeOn, false);
+    db.del('groups', group);
+  });
+
   // ---- lib sanity ----
   check('brand.js renders a card', () => {
     const { brandedReply } = require('../lib/brand');
