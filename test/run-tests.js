@@ -232,93 +232,6 @@ async function main() {
   check('menu.js hides shadow + vip categories from allmenu', () => {
     const menu = require('../lib/menu');
     const { commandMap } = require('../lib/commandHandler');
-    const rendered = menu.renderAllMenu(commandMap);
-    assert(!rendered.includes('SHADOW ENFORCEMENT'), 'shadow category leaked into allmenu');
-    assert(!/\.ban\b/.test(rendered), 'hidden .ban leaked into allmenu');
-    assert(!/\.vipgen\b/.test(rendered), 'hidden .vipgen leaked into allmenu');
-  });
-
-  check('MIN MENU contains the approved shortcuts in the requested order', () => {
-    const menu = require('../lib/menu');
-    const { commandMap } = require('../lib/commandHandler');
-    const rendered = menu.mainMenu(mockCtx({ isGroup: false }), commandMap);
-    const shortcuts = ['.groupmenu', '.securitymenu', '.botmenu', '.aimenu', '.downloadmenu', '.mediamenu', '.utilitymenu', '.communitymenu', '.channelmenu', '.diagmenu', '.allmenu'];
-    let previous = -1;
-    for (const shortcut of shortcuts) {
-      const position = rendered.indexOf(shortcut);
-      assert(position > previous, 'shortcut missing or out of order: ' + shortcut);
-      previous = position;
-    }
-    assert(rendered.includes('Active'));
-    assert(rendered.includes('Cmds'));
-  });
-
-  await checkAsync('Pair Bot returns the exact central pairing invitation', async () => {
-    const { handleCommand } = require('../lib/commandHandler');
-    const result = await handleCommand(mockCtx({
-      isGroup: false,
-      chatJid: '263780706629@s.whatsapp.net',
-      sender: '263780706629@s.whatsapp.net',
-      rawText: '.pair'
-    }));
-    assert(result && result.plainText, 'pair command did not return a plain-text invitation');
-    assert(result.plainText.includes('WANNA CRY THANXIEE'));
-    assert(result.plainText.includes('Powered By : THANXIEE DEV'));
-    assert(result.plainText.includes('https://wanna-crythanxie-v4145-codezerox1.vercel.app/pair'));
-    assert(result.plainText.includes('Want your own WhatsApp bot?'));
-  });
-
-  await checkAsync('plain Pair Bot request returns the same central invitation', async () => {
-    const { handleCommand } = require('../lib/commandHandler');
-    const result = await handleCommand(mockCtx({
-      isGroup: false,
-      chatJid: '263780706629@s.whatsapp.net',
-      sender: '263780706629@s.whatsapp.net',
-      rawText: 'Pair Bot'
-    }));
-    assert(result && result.plainText);
-    assert(result.plainText.includes('https://wanna-crythanxie-v4145-codezerox1.vercel.app/pair'));
-  });
-
-  check('filters.js detects a link when antilink is on', () => {
-    const db = require('../lib/db');
-    const filters = require('../lib/filters');
-    const groupJid = 'test-filter-group@g.us';
-    db.set('groups', `${groupJid}:antilink`, true);
-    const fakeMsg = { message: { conversation: 'check this out https://example.com' } };
-    const violation = filters.checkViolations(groupJid, fakeMsg, 'someone@s.whatsapp.net', false);
-    assert(violation && violation.includes('antilink'));
-    db.set('groups', `${groupJid}:antilink`, false);
-  });
-
-  check('filters.js exempts admins', () => {
-    const db = require('../lib/db');
-    const filters = require('../lib/filters');
-    const groupJid = 'test-filter-group-2@g.us';
-    db.set('groups', `${groupJid}:antilink`, true);
-    const fakeMsg = { message: { conversation: 'https://example.com' } };
-    const violation = filters.checkViolations(groupJid, fakeMsg, 'admin@s.whatsapp.net', true);
-    assert.strictEqual(violation, null);
-  });
-
-  await checkAsync('scheduler.js queues welcome messages with mentions and retries', async () => {
-    const scheduler = require('../lib/scheduler');
-    const when = scheduler.parseWhen('+30m');
-    assert(when > Date.now());
-    const group = 'sched-test-group@g.us';
-    const member = '263711111111@s.whatsapp.net';
-    const id = scheduler.addSchedule(group, 'Welcome @263711111111', Date.now() - 1, {
-      title: 'WELCOME NEW MEMBER', mentions: [member], kind: 'welcome'
-    });
-    const list = scheduler.listSchedules(group);
-    assert(list.find((s) => s.id === id && s.kind === 'welcome'));
-    const sent = [];
-    await scheduler.tick({ async sendMessage(jid, payload) { sent.push({ jid, payload }); } }, (title, lines) => title + ': ' + lines.join(' '));
-    assert.strictEqual(sent.length, 1);
-    assert.deepStrictEqual(sent[0].payload.mentions, [member]);
-    assert(sent[0].payload.text.includes('WELCOME NEW MEMBER'));
-    scheduler.cancelSchedule(group, id);
-  });
 
   // ---- successful pairing welcome and Shadow Enforcement live-action checks ----
   await checkAsync('successful pairing sends the bot image and first main menu once to the paired chat', async () => {
@@ -418,6 +331,94 @@ async function main() {
     const result = await commandMap.tempban.run(ctx);
     assert(result.includes('INVALID DURATION'));
     vip.lock(owner);
+  });
+
+    const rendered = menu.renderAllMenu(commandMap);
+    assert(!rendered.includes('SHADOW ENFORCEMENT'), 'shadow category leaked into allmenu');
+    assert(!/\.ban\b/.test(rendered), 'hidden .ban leaked into allmenu');
+    assert(!/\.vipgen\b/.test(rendered), 'hidden .vipgen leaked into allmenu');
+  });
+
+  check('MIN MENU contains the approved shortcuts in the requested order', () => {
+    const menu = require('../lib/menu');
+    const { commandMap } = require('../lib/commandHandler');
+    const rendered = menu.mainMenu(mockCtx({ isGroup: false }), commandMap);
+    const shortcuts = ['.groupmenu', '.securitymenu', '.botmenu', '.aimenu', '.downloadmenu', '.mediamenu', '.utilitymenu', '.communitymenu', '.channelmenu', '.diagmenu', '.allmenu'];
+    let previous = -1;
+    for (const shortcut of shortcuts) {
+      const position = rendered.indexOf(shortcut);
+      assert(position > previous, 'shortcut missing or out of order: ' + shortcut);
+      previous = position;
+    }
+    assert(rendered.includes('Active'));
+    assert(rendered.includes('Cmds'));
+  });
+
+  await checkAsync('Pair Bot returns the exact central pairing invitation', async () => {
+    const { handleCommand } = require('../lib/commandHandler');
+    const result = await handleCommand(mockCtx({
+      isGroup: false,
+      chatJid: '263780706629@s.whatsapp.net',
+      sender: '263780706629@s.whatsapp.net',
+      rawText: '.pair'
+    }));
+    assert(result && result.plainText, 'pair command did not return a plain-text invitation');
+    assert(result.plainText.includes('WANNA CRY THANXIEE'));
+    assert(result.plainText.includes('Powered By : THANXIEE DEV'));
+    assert(result.plainText.includes('https://wanna-crythanxie-v4145-codezerox1.vercel.app/pair'));
+    assert(result.plainText.includes('Want your own WhatsApp bot?'));
+  });
+
+  await checkAsync('plain Pair Bot request returns the same central invitation', async () => {
+    const { handleCommand } = require('../lib/commandHandler');
+    const result = await handleCommand(mockCtx({
+      isGroup: false,
+      chatJid: '263780706629@s.whatsapp.net',
+      sender: '263780706629@s.whatsapp.net',
+      rawText: 'Pair Bot'
+    }));
+    assert(result && result.plainText);
+    assert(result.plainText.includes('https://wanna-crythanxie-v4145-codezerox1.vercel.app/pair'));
+  });
+
+  check('filters.js detects a link when antilink is on', () => {
+    const db = require('../lib/db');
+    const filters = require('../lib/filters');
+    const groupJid = 'test-filter-group@g.us';
+    db.set('groups', `${groupJid}:antilink`, true);
+    const fakeMsg = { message: { conversation: 'check this out https://example.com' } };
+    const violation = filters.checkViolations(groupJid, fakeMsg, 'someone@s.whatsapp.net', false);
+    assert(violation && violation.includes('antilink'));
+    db.set('groups', `${groupJid}:antilink`, false);
+  });
+
+  check('filters.js exempts admins', () => {
+    const db = require('../lib/db');
+    const filters = require('../lib/filters');
+    const groupJid = 'test-filter-group-2@g.us';
+    db.set('groups', `${groupJid}:antilink`, true);
+    const fakeMsg = { message: { conversation: 'https://example.com' } };
+    const violation = filters.checkViolations(groupJid, fakeMsg, 'admin@s.whatsapp.net', true);
+    assert.strictEqual(violation, null);
+  });
+
+  await checkAsync('scheduler.js queues welcome messages with mentions and retries', async () => {
+    const scheduler = require('../lib/scheduler');
+    const when = scheduler.parseWhen('+30m');
+    assert(when > Date.now());
+    const group = 'sched-test-group@g.us';
+    const member = '263711111111@s.whatsapp.net';
+    const id = scheduler.addSchedule(group, 'Welcome @263711111111', Date.now() - 1, {
+      title: 'WELCOME NEW MEMBER', mentions: [member], kind: 'welcome'
+    });
+    const list = scheduler.listSchedules(group);
+    assert(list.find((s) => s.id === id && s.kind === 'welcome'));
+    const sent = [];
+    await scheduler.tick({ async sendMessage(jid, payload) { sent.push({ jid, payload }); } }, (title, lines) => title + ': ' + lines.join(' '));
+    assert.strictEqual(sent.length, 1);
+    assert.deepStrictEqual(sent[0].payload.mentions, [member]);
+    assert(sent[0].payload.text.includes('WELCOME NEW MEMBER'));
+    scheduler.cancelSchedule(group, id);
   });
 
   // ---- every command's usage-guide ("no args") path ----
