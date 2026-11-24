@@ -341,7 +341,7 @@ async function startSession(options) {
         if (activeBans.length !== bans.length) db.set('banned', update.id, activeBans);
         const blacklist = db.get('groups', `${update.id}:blacklist`, []);
         const botJid = String(sock.user?.id || '').split(':')[0];
-        const normalise = value => String(value || '').split('@')[0].split(':')[0].replace(/\\D/g, '');
+        const normalise = value => String(value || '').split('@')[0].split(':')[0].replace(/\D/g, '');
         const botEntry = (groupMetadata?.participants || []).find(item => normalise(item.id || item.jid) === normalise(botJid));
         const botIsAdmin = Boolean(botEntry?.admin);
 
