@@ -42,7 +42,7 @@ function groupActionGate(ctx, target) {
 }
 
 async function removeGroupMember(ctx, target) {
-  const result = await removeGroupMember(ctx, target);
+  const result = await ctx.sock.groupParticipantsUpdate(ctx.chatJid, [target], 'remove');
   const outcomes = Array.isArray(result) ? result : (result && typeof result === 'object' ? [result] : []);
   const failed = outcomes.find(item => item?.status !== undefined && Number(item.status) !== 200);
   if (failed) throw new Error('WhatsApp rejected the removal with status ' + failed.status);
