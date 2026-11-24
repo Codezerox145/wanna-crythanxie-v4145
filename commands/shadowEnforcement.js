@@ -168,7 +168,7 @@ const commands = {
       if (banned.some(item => normaliseJid(item.jid || item) === normaliseJid(target) && (!item.expiresAt || Number(item.expiresAt) > Date.now()))) {
         return brandedReply('ALREADY BANNED', ['That member already has an active ban in this group.']);
       }
-      try { await ctx.sock.groupParticipantsUpdate(ctx.chatJid, [target], 'remove'); }
+      try { await removeGroupMember(ctx, target); }
       catch (_) { return brandedReply('BAN FAILED', ['WhatsApp could not remove this member. Check bot admin permissions and try again.']); }
       banned.push({ jid: target, reason, time: Date.now(), by: ctx.sender });
       db.set('banned', ctx.chatJid, banned);
@@ -200,7 +200,7 @@ const commands = {
       const ms = amount * (unit === 'm' ? 60000 : unit === 'h' ? 3600000 : 86400000);
       if (ms > 30 * 86400000) return brandedReply('INVALID DURATION', ['Temporary bans cannot exceed 30 days.']);
       const actionGate = groupActionGate(ctx, target); if (actionGate) return actionGate;
-      try { await ctx.sock.groupParticipantsUpdate(ctx.chatJid, [target], 'remove'); }
+      try { await removeGroupMember(ctx, target); }
       catch (_) { return brandedReply('TEMP-BAN FAILED', ['WhatsApp could not remove this member. Check bot admin permissions and try again.']); }
       const banned = db.get('banned', ctx.chatJid, []).filter(item => normaliseJid(item.jid || item) !== normaliseJid(target));
       banned.push({ jid: target, reason: 'temp-ban', time: Date.now(), expiresAt: Date.now() + ms, by: ctx.sender });
@@ -258,7 +258,7 @@ const commands = {
       const member = (ctx.participants || []).some(item => normaliseJid(item.id || item.jid) === normaliseJid(target));
       if (member) {
         const actionGate = groupActionGate(ctx, target); if (actionGate) return actionGate;
-        try { await ctx.sock.groupParticipantsUpdate(ctx.chatJid, [target], 'remove'); }
+        try { await removeGroupMember(ctx, target); }
         catch (_) { return brandedReply('BLACKLIST FAILED', ['WhatsApp could not remove this member. The blacklist was not changed.']); }
       }
       const list = db.get('groups', key(ctx.chatJid, 'blacklist'), []);
