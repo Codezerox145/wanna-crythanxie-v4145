@@ -167,8 +167,8 @@ const commands = {
       if (err) return brandedReply('ACCESS DENIED', [err]);
       const text = ctx.args.join(' ');
       if (!text) return usageGuide('setwelcome', '.setwelcome <text>', '.setwelcome Hey {user}, welcome to {group}!');
-      setGroupSetting(ctx.chatJid, { welcomeOn: true, welcomeText: text });
-      return brandedReply('WELCOME MESSAGE SET', ['Welcome is now ON with your custom message.']);
+      setGroupSetting(ctx.chatJid, { welcomeText: text });
+      return brandedReply('WELCOME MESSAGE SAVED', ['Template saved. Use .welcome on to activate it.']);
     }
   },
   setgoodbye: {
@@ -178,8 +178,8 @@ const commands = {
       if (err) return brandedReply('ACCESS DENIED', [err]);
       const text = ctx.args.join(' ');
       if (!text) return usageGuide('setgoodbye', '.setgoodbye <text>', '.setgoodbye {user} left {group}, farewell!');
-      setGroupSetting(ctx.chatJid, { goodbyeOn: true, goodbyeText: text });
-      return brandedReply('GOODBYE MESSAGE SET', ['Goodbye is now ON with your custom message.']);
+      setGroupSetting(ctx.chatJid, { goodbyeText: text });
+      return brandedReply('GOODBYE MESSAGE SAVED', ['Template saved. Use .goodbye on to activate it.']);
     }
   },
   welcome: {
