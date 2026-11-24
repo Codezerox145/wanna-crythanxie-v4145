@@ -85,7 +85,7 @@ async function processIncoming(sock, session, message) {
   // by the owner in their own WhatsApp "Message yourself" conversation.
   // Baileys IDs can include a device suffix (number:device@s.whatsapp.net),
   // so compare the normalized user part rather than the full JID.
-  const jidUser = value => String(value || '').split('@')[0].split(':')[0].replace(/\\D/g, '');
+  const jidUser = value => String(value || '').split('@')[0].split(':')[0].replace(/\D/g, '');
   const selfJids = [sock.user?.id, sock.user?.lid, sock.user?.phoneNumber].filter(Boolean);
   const remoteUser = String(remoteJid).split('@')[0].split(':')[0];
   const isOwnChat = selfJids.some(value => {
