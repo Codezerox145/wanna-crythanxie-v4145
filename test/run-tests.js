@@ -289,7 +289,7 @@ async function main() {
       mentions: [target], args: ['repeated spam'],
       participants: [{ id: owner, admin: 'admin' }, { id: target, admin: null }]
     });
-    ctx.sock.groupParticipantsUpdate = async () => { throw new Error('WhatsApp permission denied'); };
+    ctx.sock.groupParticipantsUpdate = async () => [{ status: '403', content: 'not-authorized' }];
     const result = await commandMap.ban.run(ctx);
     assert(result.text.includes('BAN FAILED'));
     assert.strictEqual(db.get('banned', group, []).length, 0);
