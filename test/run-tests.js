@@ -233,6 +233,9 @@ async function main() {
     const menu = require('../lib/menu');
     const { commandMap } = require('../lib/commandHandler');
 
+  // ---- every command's usage-guide ("no args") path ----
+  const { commandMap } = require('../lib/commandHandler');
+
   // ---- successful pairing welcome and Shadow Enforcement live-action checks ----
   await checkAsync('successful pairing sends the bot image and first main menu once to the paired chat', async () => {
     const fs = require('fs');
@@ -421,8 +424,7 @@ async function main() {
     scheduler.cancelSchedule(group, id);
   });
 
-  // ---- every command's usage-guide ("no args") path ----
-  const { commandMap } = require('../lib/commandHandler');
+
   const names = Object.keys(commandMap);
   console.log(`Discovered ${names.length} registered commands.\n`);
 
