@@ -178,21 +178,47 @@ async function startSession(options) {
   fs.mkdirSync(dataDir, { recursive: true });
 
   const state = await useMultiFileAuthState(authDir);
-  // Read the live WhatsApp Web client revision. The Baileys-bundled
-  // revision can lag behind WhatsApp and may generate codes that the phone
-  // rejects with "Couldn't link device".
+  // Resolve the WhatsApp Web revision without making a temporary
+  // version-endpoint failure block all pairing attempts. Operators may pin a
+  // known-good revision with WA_WEB_VERSION="2,3000,123456789".
   let version;
-  try {
-    const latest = await fetchLatestWaWebVersion({ timeout: 8000 });
-    if (!latest?.isLatest || !Array.isArray(latest.version) || latest.version.length !== 3 || !latest.version.every(Number.isInteger)) {
-      throw latest?.error || new Error('WhatsApp Web did not return a valid client revision');
+  let versionSource = 'baileys-default';
+  const configuredVersion = String(process.env.WA_WEB_VERSION || '').trim();
+  if (configuredVersion) {
+    const parsed = configuredVersion.split(/[.,\s]+/).map(Number);
+    if (parsed.length === 3 && parsed.every(value => Number.isInteger(value) && value > 0)) {
+      version = parsed;
+      versionSource = 'environment';
+    } else {
+      logger.warn({ configuredVersion }, 'Ignoring invalid WA_WEB_VERSION; expected three comma-separated integers');
     }
-    version = latest.version;
-    logger.info({ version }, 'Using live WhatsApp Web protocol version');
-  } catch (error) {
-    logger.error({ err: error }, 'Could not retrieve a current WhatsApp Web protocol version');
-    throw new Error('WhatsApp pairing is temporarily unavailable because the current WhatsApp Web version could not be verified. Please retry shortly.');
   }
+
+  if (!version) {
+    try {
+      const latest = await Promise.race([
+        fetchLatestWaWebVersion(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('WhatsApp Web version lookup timed out')), 9000))
+      ]);
+      const validVersion = Array.isArray(latest?.version) &&
+        latest.version.length === 3 &&
+        latest.version.every(value => Number.isInteger(value) && value > 0);
+      if (validVersion && latest.isLatest === true) {
+        version = latest.version;
+        versionSource = 'live-whatsapp-web';
+      } else {
+        logger.warn({
+          isLatest: Boolean(latest?.isLatest),
+          hasValidVersion: validVersion,
+          error: latest?.error?.message || null
+        }, 'Live WhatsApp Web version could not be confirmed; using the Baileys bundled default');
+      }
+    } catch (error) {
+      logger.warn({ err: error }, 'WhatsApp Web version lookup failed; using the Baileys bundled default');
+    }
+  }
+
+  logger.info({ version: version || 'bundled-default', versionSource }, 'Starting WhatsApp pairing socket');
 
   const sock = makeWASocket({
     auth: state.state,
