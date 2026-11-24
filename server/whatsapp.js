@@ -352,7 +352,10 @@ async function startSession(options) {
           if (ban || blacklisted) {
             if (botIsAdmin) {
               try {
-                await sock.groupParticipantsUpdate(update.id, [participant], 'remove');
+                const result = await sock.groupParticipantsUpdate(update.id, [participant], 'remove');
+                const outcomes = Array.isArray(result) ? result : (result && typeof result === 'object' ? [result] : []);
+                const failed = outcomes.find(item => item?.status !== undefined && Number(item.status) !== 200);
+                if (failed) throw new Error('WhatsApp rejected removal with status ' + failed.status);
                 logger.info({ group: update.id, participant, reason: ban ? 'active-ban' : 'blacklist' }, 'Blocked restricted group rejoin');
               } catch (error) {
                 logger.warn({ err: error, group: update.id, participant }, 'Could not remove restricted group joiner');
