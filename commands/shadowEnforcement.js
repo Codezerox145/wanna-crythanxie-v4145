@@ -41,6 +41,14 @@ function groupActionGate(ctx, target) {
   return null;
 }
 
+async function removeGroupMember(ctx, target) {
+  const result = await removeGroupMember(ctx, target);
+  const outcomes = Array.isArray(result) ? result : (result && typeof result === 'object' ? [result] : []);
+  const failed = outcomes.find(item => item?.status !== undefined && Number(item.status) !== 200);
+  if (failed) throw new Error('WhatsApp rejected the removal with status ' + failed.status);
+  return result;
+}
+
 function key(groupJid, suffix) { return `${groupJid}:${suffix}`; }
 
 const commands = {
