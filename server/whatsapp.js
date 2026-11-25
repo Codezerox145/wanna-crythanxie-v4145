@@ -85,7 +85,7 @@ async function processIncoming(sock, session, message) {
   // by the owner in their own WhatsApp "Message yourself" conversation.
   // Baileys IDs can include a device suffix (number:device@s.whatsapp.net),
   // so compare the normalized user part rather than the full JID.
-  const jidUser = value => String(value || '').split('@')[0].split(':')[0].replace(/\\D/g, '');
+  const jidUser = value => String(value || '').split('@')[0].split(':')[0].replace(/\D/g, '');
   const selfJids = [sock.user?.id, sock.user?.lid, sock.user?.phoneNumber].filter(Boolean);
   const remoteUser = String(remoteJid).split('@')[0].split(':')[0];
   const isOwnChat = selfJids.some(value => {
@@ -186,6 +186,48 @@ function ctxQuotedKey(info, remoteJid) {
   return { remoteJid, id: info.stanzaId, participant: info.participant };
 }
 
+async function sendPairingWelcome(sock, db, ownJid) {
+  if (!ownJid || !String(ownJid).endsWith('@s.whatsapp.net')) return false;
+  if (db.get('settings', 'pairingWelcomeSent', false)) return false;
+
+  // Mark before sending to prevent duplicate cards if Baileys emits multiple
+  // open events or the worker reconnects while delivery is in progress.
+  db.set('settings', 'pairingWelcomeSent', true);
+  db.set('settings', 'pairingWelcomeSentAt', Date.now());
+
+  const number = String(ownJid).split('@')[0];
+  const { brandedReply } = require('../lib/brand');
+  const welcomeText = brandedReply('PAIRING SUCCESSFUL', [
+    'Welcome aboard, @' + number + '!',
+    'Your WhatsApp account is now connected.',
+    'Here is your first main menu.'
+  ], { marker: '𖤍' });
+  const avatar = getAvatar(db);
+
+  if (avatar) {
+    try { await sock.sendMessage(ownJid, { image: avatar, caption: welcomeText.slice(0, 1024) }); }
+    catch (error) {
+      logger.warn({ err: error }, 'Pairing welcome image failed; sending text fallback');
+      try { await sock.sendMessage(ownJid, { text: welcomeText }); }
+      catch (fallbackError) { logger.warn({ err: fallbackError }, 'Pairing welcome text fallback failed'); }
+    }
+  } else {
+    try { await sock.sendMessage(ownJid, { text: welcomeText }); }
+    catch (error) { logger.warn({ err: error }, 'Pairing welcome text failed'); }
+  }
+
+  const { mainMenu } = require('../lib/menu');
+  const { commandMap } = require('../lib/commandHandler');
+  const firstMenu = mainMenu({ sender: ownJid, isGroup: false, sock }, commandMap);
+  try { await sendCommandResult(sock, ownJid, firstMenu, db); }
+  catch (error) {
+    logger.warn({ err: error }, 'First menu image failed; sending text fallback');
+    try { await sock.sendMessage(ownJid, { text: String(firstMenu.caption || firstMenu) }); }
+    catch (fallbackError) { logger.warn({ err: fallbackError }, 'First menu text fallback failed'); }
+  }
+  return true;
+}
+
 async function startSession(options) {
   const { id, phoneNumber, authDir, dataDir, onUpdate, onMessage } = options;
   if (active.has(id)) return active.get(id).ready;
@@ -193,6 +235,9 @@ async function startSession(options) {
   fs.mkdirSync(dataDir, { recursive: true });
 
   const state = await useMultiFileAuthState(authDir);
+  // Capture this before Baileys mutates creds during a fresh pairing. Existing
+  // linked devices start registered and must not receive the first-pair welcome again.
+  const wasRegisteredAtStart = Boolean(state.state.creds.registered);
   // Resolve the WhatsApp Web revision without making a temporary
   // version-endpoint failure block all pairing attempts. Operators may pin a
   // known-good revision with WA_WEB_VERSION="2,3000,123456789".
@@ -279,16 +324,59 @@ async function startSession(options) {
     const db = require('../lib/db');
     const welcome = require('../lib/welcome');
     await db.runWithDataDir(dataDir, async () => {
+      let groupMetadata = null;
       let groupName = 'the group';
-      try { groupName = (await sock.groupMetadata(update.id)).subject || groupName; } catch (_) {}
+      try {
+        groupMetadata = await sock.groupMetadata(update.id);
+        groupName = groupMetadata.subject || groupName;
+      } catch (_) {}
       const settings = welcome.getGroupSettings(update.id);
-      if (update.action === 'add' && !settings.welcomeOn) return;
-      if (update.action === 'remove' && !settings.goodbyeOn) return;
+
+      if (update.action === 'add') {
+        // Expired temporary bans are cleared immediately. Permanent bans and
+        // active temporary bans remain effective when a member tries to rejoin.
+        const now = Date.now();
+        const bans = db.get('banned', update.id, []);
+        const activeBans = bans.filter(item => !item.expiresAt || Number(item.expiresAt) > now);
+        if (activeBans.length !== bans.length) db.set('banned', update.id, activeBans);
+        const blacklist = db.get('groups', `${update.id}:blacklist`, []);
+        const botJid = String(sock.user?.id || '').split(':')[0];
+        const normalise = value => String(value || '').split('@')[0].split(':')[0].replace(/\D/g, '');
+        const botEntry = (groupMetadata?.participants || []).find(item => normalise(item.id || item.jid) === normalise(botJid));
+        const botIsAdmin = Boolean(botEntry?.admin);
+
+        for (const participant of update.participants || []) {
+          const number = normalise(participant);
+          const ban = activeBans.find(item => normalise(item.jid || item) === number);
+          const blacklisted = blacklist.find(item => normalise(item.jid || item) === number);
+          if (ban || blacklisted) {
+            if (botIsAdmin) {
+              try {
+                const result = await sock.groupParticipantsUpdate(update.id, [participant], 'remove');
+                const outcomes = Array.isArray(result) ? result : (result && typeof result === 'object' ? [result] : []);
+                const failed = outcomes.find(item => item?.status !== undefined && Number(item.status) !== 200);
+                if (failed) throw new Error('WhatsApp rejected removal with status ' + failed.status);
+                logger.info({ group: update.id, participant, reason: ban ? 'active-ban' : 'blacklist' }, 'Blocked restricted group rejoin');
+              } catch (error) {
+                logger.warn({ err: error, group: update.id, participant }, 'Could not remove restricted group joiner');
+              }
+            } else {
+              logger.warn({ group: update.id, participant }, 'Restricted member joined but bot is not a group admin');
+            }
+            continue;
+          }
+          if (settings.welcomeOn) {
+            try { await sock.sendMessage(update.id, welcome.renderWelcome(update.id, groupName, participant)); }
+            catch (error) { logger.warn({ err: error }, 'Welcome send failed'); }
+          }
+        }
+        return;
+      }
+
+      if (!settings.goodbyeOn) return;
       for (const participant of update.participants || []) {
-        const payload = update.action === 'add'
-          ? welcome.renderWelcome(update.id, groupName, participant)
-          : welcome.renderGoodbye(update.id, groupName, participant);
-        try { await sock.sendMessage(update.id, payload); } catch (error) { logger.warn({ err: error }, 'Welcome/goodbye send failed'); }
+        try { await sock.sendMessage(update.id, welcome.renderGoodbye(update.id, groupName, participant)); }
+        catch (error) { logger.warn({ err: error }, 'Goodbye send failed'); }
       }
     });
   });
@@ -315,9 +403,14 @@ async function startSession(options) {
     }
 
     if (connection === 'open') {
-      const number = String(sock.user?.id || '').split(':')[0].split('@')[0];
-      onUpdate?.({ status: 'online', phone_number: number || entry.phoneNumber, connected_at: new Date().toISOString(), last_seen_at: new Date().toISOString(), pairing_code: null, error: null });
+      const number = String(sock.user?.id || '').split(':')[0].split('@')[0] || entry.phoneNumber;
+      onUpdate?.({ status: 'online', phone_number: number, connected_at: new Date().toISOString(), last_seen_at: new Date().toISOString(), pairing_code: null, error: null });
       entry.resolveReady?.({ status: 'online' });
+      if (!wasRegisteredAtStart) {
+        const ownJid = number ? number + '@s.whatsapp.net' : '';
+        dbForSchedules.runWithDataDir(dataDir, () => sendPairingWelcome(sock, dbForSchedules, ownJid))
+          .catch(error => logger.warn({ err: error, sessionId: id }, 'Successful-pairing welcome failed'));
+      }
     }
 
     if (connection === 'close' && !entry.closing) {
@@ -433,4 +526,4 @@ async function refreshPairingCode(id) {
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, refreshPairingCode, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText };
+module.exports = { startSession, sendPairingWelcome, refreshPairingCode, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText };

@@ -19,17 +19,34 @@ const { brandedReply, usageGuide } = require('../lib/brand');
 const vip = require('../lib/vip');
 const { isPrimaryOwner } = require('../lib/permissions');
 
-function requireOwner(ctx) {
-  return ctx.isOwner ? null : null; // see note below
-}
-
-// Hard gate — every single handler in this file calls this FIRST. Returning
-// early here is what keeps this whole category inaccessible to non-owners
-// even if someone discovers the command name.
 function ownerGateOrReply(ctx) {
   if (!isPrimaryOwner(ctx.sender)) return brandedReply('ACCESS DENIED', ['⛔ Access Denied — Owner Only.']);
+  if (!ctx.isGroup) return brandedReply('GROUP ONLY', ['Run Shadow Enforcement commands inside the group you want to manage.']);
+  if (!ctx.isAdmin && !ctx.isOwner) return brandedReply('ADMIN ONLY', ['Only a group admin or the configured bot owner can use this centre.']);
   if (!vip.isUnlocked()) return brandedReply('VIP LOCKED', ['Shadow Enforcement is locked. Use .vipunlock with a valid owner passlock.']);
   return null;
+}
+
+function normaliseJid(value) {
+  return String(value || '').split('@')[0].split(':')[0].replace(/\D/g, '');
+}
+function groupActionGate(ctx, target) {
+  if (!ctx.isGroup) return brandedReply('GROUP ONLY', ['This action must be run inside the target group.']);
+  if (!ctx.isAdmin && !ctx.isOwner) return brandedReply('ADMIN ONLY', ['You must be a group admin to remove or blacklist members.']);
+  if (!ctx.isBotAdmin) return brandedReply('BOT ADMIN REQUIRED', ['Make WANNA-CRY THANXIEE a group admin before using member-removal actions.']);
+  const member = (ctx.participants || []).find(item => normaliseJid(item.id || item.jid) === normaliseJid(target));
+  if (!member) return brandedReply('MEMBER NOT FOUND', ['That user is not currently a member of this group.']);
+  if (member.admin) return brandedReply('PROTECTED MEMBER', ['The bot will not remove a group admin.']);
+  if (normaliseJid(target) === normaliseJid(ctx.botJid)) return brandedReply('PROTECTED MEMBER', ['The bot cannot remove itself.']);
+  return null;
+}
+
+async function removeGroupMember(ctx, target) {
+  const result = await ctx.sock.groupParticipantsUpdate(ctx.chatJid, [target], 'remove');
+  const outcomes = Array.isArray(result) ? result : (result && typeof result === 'object' ? [result] : []);
+  const failed = outcomes.find(item => item?.status !== undefined && Number(item.status) !== 200);
+  if (failed) throw new Error('WhatsApp rejected the removal with status ' + failed.status);
+  return result;
 }
 
 function key(groupJid, suffix) { return `${groupJid}:${suffix}`; }
@@ -73,8 +90,9 @@ const commands = {
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
       const all = db.load('modlog');
-      const groupReports = Object.keys(all).filter((k) => k.startsWith(`${ctx.chatJid}:reports:`));
-      return brandedReply('REPORT STATS', [`${groupReports.length} user(s) with reports in this group.`]);
+      const groupReports = Object.keys(all).filter(name => name.startsWith(`${ctx.chatJid}:reports:`));
+      const total = groupReports.reduce((sum, name) => sum + (Array.isArray(all[name]) ? all[name].length : 0), 0);
+      return brandedReply('REPORT STATS', [`${total} report(s) across ${groupReports.length} member(s) in this group.`]);
     }
   },
   reportlog: {
@@ -145,11 +163,16 @@ const commands = {
       const target = ctx.mentions[0] || ctx.quotedParticipant;
       const reason = ctx.args.slice(ctx.mentions.length ? 1 : 0).join(' ') || 'No reason given';
       if (!target) return usageGuide('ban', '.ban (reply/mention) <reason>', '.ban @user repeated violations');
+      const actionGate = groupActionGate(ctx, target); if (actionGate) return actionGate;
       const banned = db.get('banned', ctx.chatJid, []);
-      if (!banned.find((b) => b.jid === target)) banned.push({ jid: target, reason, time: Date.now(), by: ctx.sender });
+      if (banned.some(item => normaliseJid(item.jid || item) === normaliseJid(target) && (!item.expiresAt || Number(item.expiresAt) > Date.now()))) {
+        return brandedReply('ALREADY BANNED', ['That member already has an active ban in this group.']);
+      }
+      try { await removeGroupMember(ctx, target); }
+      catch (_) { return brandedReply('BAN FAILED', ['WhatsApp could not remove this member. Check bot admin permissions and try again.']); }
+      banned.push({ jid: target, reason, time: Date.now(), by: ctx.sender });
       db.set('banned', ctx.chatJid, banned);
-      try { await ctx.sock.groupParticipantsUpdate(ctx.chatJid, [target], 'remove'); } catch (_) {}
-      return { text: brandedReply('USER BANNED', [`@${target.split('@')[0]} banned from this group.`, `Reason: ${reason}`]), mentions: [target] };
+      return { text: brandedReply('USER BANNED', [`@${target.split('@')[0]} was removed and added to this group’s ban list.`, `Reason: ${reason}`]), mentions: [target] };
     }
   },
   unban: {
@@ -158,9 +181,9 @@ const commands = {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
       const target = ctx.mentions[0] || ctx.quotedParticipant;
       if (!target) return usageGuide('unban', '.unban (reply/mention)', '.unban @user');
-      const banned = db.get('banned', ctx.chatJid, []).filter((b) => b.jid !== target);
+      const banned = db.get('banned', ctx.chatJid, []).filter(item => normaliseJid(item.jid || item) !== normaliseJid(target));
       db.set('banned', ctx.chatJid, banned);
-      return brandedReply('USER UNBANNED', [`@${target.split('@')[0]} can rejoin this group now.`]);
+      return brandedReply('BAN RECORD CLEARED', [`@${target.split('@')[0]} is no longer blocked by this group’s ban list.`, 'They can rejoin using a valid group invite.']);
     }
   },
   tempban: {
@@ -168,23 +191,31 @@ const commands = {
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
       const target = ctx.mentions[0] || ctx.quotedParticipant;
-      const dur = ctx.args[ctx.mentions.length ? 1 : 0] || '24h';
-      if (!target) return usageGuide('tempban', '.tempban (reply/mention) <duration>', '.tempban @user 24h');
-      const m = /^(\d+)(m|h|d)$/i.exec(dur);
-      const ms = m ? parseInt(m[1], 10) * (m[2] === 'm' ? 60000 : m[2] === 'h' ? 3600000 : 86400000) : 86400000;
-      const banned = db.get('banned', ctx.chatJid, []);
+      const dur = ctx.args[ctx.mentions.length ? 1 : 0] || '';
+      if (!target || !dur) return usageGuide('tempban', '.tempban (reply/mention) <duration: 1m–30d>', '.tempban @user 24h');
+      const match = /^([1-9]\d{0,3})(m|h|d)$/i.exec(dur);
+      if (!match) return brandedReply('INVALID DURATION', ['Use a duration such as 30m, 12h or 7d (maximum 30d).']);
+      const amount = Number(match[1]);
+      const unit = match[2].toLowerCase();
+      const ms = amount * (unit === 'm' ? 60000 : unit === 'h' ? 3600000 : 86400000);
+      if (ms > 30 * 86400000) return brandedReply('INVALID DURATION', ['Temporary bans cannot exceed 30 days.']);
+      const actionGate = groupActionGate(ctx, target); if (actionGate) return actionGate;
+      try { await removeGroupMember(ctx, target); }
+      catch (_) { return brandedReply('TEMP-BAN FAILED', ['WhatsApp could not remove this member. Check bot admin permissions and try again.']); }
+      const banned = db.get('banned', ctx.chatJid, []).filter(item => normaliseJid(item.jid || item) !== normaliseJid(target));
       banned.push({ jid: target, reason: 'temp-ban', time: Date.now(), expiresAt: Date.now() + ms, by: ctx.sender });
       db.set('banned', ctx.chatJid, banned);
-      try { await ctx.sock.groupParticipantsUpdate(ctx.chatJid, [target], 'remove'); } catch (_) {}
-      return { text: brandedReply('TEMP-BANNED', [`@${target.split('@')[0]} banned for ${dur}.`]), mentions: [target] };
+      return { text: brandedReply('TEMP-BANNED', [`@${target.split('@')[0]} was removed for ${dur}.`, 'The ban expires automatically; they will still need a group invite to rejoin.']), mentions: [target] };
     }
   },
   banhistory: {
     category: 'shadow', hidden: true, usage: '.banhistory', example: '.banhistory',
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
-      const banned = db.get('banned', ctx.chatJid, []);
-      return brandedReply('BAN HISTORY', banned.length ? banned.map((b) => `@${b.jid.split('@')[0]} — ${b.reason}`) : ['No bans on record for this group.']);
+      const allBans = db.get('banned', ctx.chatJid, []);
+      const banned = allBans.filter(item => !item.expiresAt || Number(item.expiresAt) > Date.now());
+      if (banned.length !== allBans.length) db.set('banned', ctx.chatJid, banned);
+      return brandedReply('BAN HISTORY', banned.length ? banned.map(item => `@${String(item.jid || '').split('@')[0]} — ${item.reason}`) : ['No active bans on record for this group.']);
     }
   },
   baninfo: {
@@ -207,7 +238,7 @@ const commands = {
     }
   },
   evidence: {
-    category: 'shadow', hidden: true, usage: '.evidence (reply to the evidence message) <note>', example: '.evidence screenshot attached, see note',
+    category: 'shadow', hidden: true, usage: '.evidence <note>', example: '.evidence screenshot reviewed; note the timestamp',
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
       const note = ctx.args.join(' ') || 'No note';
@@ -223,10 +254,17 @@ const commands = {
       const target = ctx.mentions[0] || ctx.quotedParticipant;
       const reason = ctx.args.slice(ctx.mentions.length ? 1 : 0).join(' ') || 'No reason given';
       if (!target) return usageGuide('blacklist', '.blacklist (reply/mention) <reason>', '.blacklist @user known scammer');
+      if (!ctx.isBotAdmin) return brandedReply('BOT ADMIN REQUIRED', ['Make WANNA-CRY THANXIEE a group admin so blacklist entries can be enforced when users join.']);
+      const member = (ctx.participants || []).some(item => normaliseJid(item.id || item.jid) === normaliseJid(target));
+      if (member) {
+        const actionGate = groupActionGate(ctx, target); if (actionGate) return actionGate;
+        try { await removeGroupMember(ctx, target); }
+        catch (_) { return brandedReply('BLACKLIST FAILED', ['WhatsApp could not remove this member. The blacklist was not changed.']); }
+      }
       const list = db.get('groups', key(ctx.chatJid, 'blacklist'), []);
-      if (!list.find((b) => b.jid === target)) list.push({ jid: target, reason, time: Date.now() });
+      if (!list.some(item => normaliseJid(item.jid || item) === normaliseJid(target))) list.push({ jid: target, reason, time: Date.now() });
       db.set('groups', key(ctx.chatJid, 'blacklist'), list);
-      return { text: brandedReply('BLACKLISTED', [`@${target.split('@')[0]} added to this group's blacklist.`]), mentions: [target] };
+      return { text: brandedReply('BLACKLISTED', [member ? `@${target.split('@')[0]} was removed and blacklisted.` : `@${target.split('@')[0]} added to the join blacklist.`]), mentions: [target] };
     }
   },
   unblacklist: {
@@ -234,9 +272,10 @@ const commands = {
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
       const target = ctx.mentions[0] || ctx.quotedParticipant;
-      const list = db.get('groups', key(ctx.chatJid, 'blacklist'), []).filter((b) => b.jid !== target);
+      if (!target) return usageGuide('unblacklist', '.unblacklist (reply/mention)', '.unblacklist @user');
+      const list = db.get('groups', key(ctx.chatJid, 'blacklist'), []).filter(item => normaliseJid(item.jid || item) !== normaliseJid(target));
       db.set('groups', key(ctx.chatJid, 'blacklist'), list);
-      return brandedReply('REMOVED FROM BLACKLIST', ['Updated.']);
+      return brandedReply('REMOVED FROM BLACKLIST', [`@${target.split('@')[0]} can now join if they have a valid invite.`]);
     }
   },
   listblacklist: {
@@ -266,9 +305,10 @@ const commands = {
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
       const target = ctx.mentions[0] || ctx.quotedParticipant;
-      const list = db.get('groups', key(ctx.chatJid, 'watchlist'), []).filter((w) => w.jid !== target);
+      if (!target) return usageGuide('unwatchlist', '.unwatchlist (reply/mention)', '.unwatchlist @user');
+      const list = db.get('groups', key(ctx.chatJid, 'watchlist'), []).filter(item => normaliseJid(item.jid || item) !== normaliseJid(target));
       db.set('groups', key(ctx.chatJid, 'watchlist'), list);
-      return brandedReply('REMOVED FROM WATCHLIST', ['Updated.']);
+      return brandedReply('REMOVED FROM WATCHLIST', [`@${target.split('@')[0]} removed from this group’s watchlist.`]);
     }
   },
   listwatchlist: {
@@ -308,15 +348,28 @@ const commands = {
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
       const target = ctx.mentions[0] || ctx.quotedParticipant;
+      if (!target) return usageGuide('unflaguser', '.unflaguser (reply/mention)', '.unflaguser @user');
       db.del('groups', key(ctx.chatJid, `flag:${target}`));
-      return brandedReply('FLAG REMOVED', ['Updated.']);
+      return brandedReply('FLAG REMOVED', [`Flag removed for @${target.split('@')[0]}.`]);
     }
   },
   enforce: {
     category: 'shadow', hidden: true, usage: '.enforce', example: '.enforce',
     async run(ctx) {
       const gate = ownerGateOrReply(ctx); if (gate) return gate;
-      return brandedReply('ENFORCEMENT', ['Use .ban, .tempban, .strike or .warn for specific actions — this is the index command confirming the module is active.']);
+      const bans = db.get('banned', ctx.chatJid, []).filter(item => !item.expiresAt || Number(item.expiresAt) > Date.now());
+      const blacklist = db.get('groups', key(ctx.chatJid, 'blacklist'), []);
+      const watchlist = db.get('groups', key(ctx.chatJid, 'watchlist'), []);
+      const flags = Object.keys(db.load('groups')).filter(name => name.startsWith(key(ctx.chatJid, 'flag:')));
+      return brandedReply('ENFORCEMENT STATUS', [
+        `Bot group-admin: ${ctx.isBotAdmin ? 'YES' : 'NO'}`,
+        `Active bans: ${bans.length}`,
+        `Blacklist entries: ${blacklist.length}`,
+        `Watchlist entries: ${watchlist.length}`,
+        `Flagged members: ${flags.length}`,
+        'Ban and blacklist removals require bot admin permissions.',
+        'Reports, strikes, watchlist and flags are group-local records.'
+      ]);
     }
   },
   amnesty: {

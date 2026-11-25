@@ -322,6 +322,108 @@ async function main() {
 
   // ---- every command's usage-guide ("no args") path ----
   const { commandMap } = require('../lib/commandHandler');
+
+  // ---- successful pairing welcome and Shadow Enforcement live-action checks ----
+  await checkAsync('successful pairing sends the bot image and first main menu once to the paired chat', async () => {
+    const fs = require('fs');
+    const { sendPairingWelcome } = require('../server/whatsapp');
+    const db = require('../lib/db');
+    const dataDir = path.join(__dirname, 'pairing-welcome-test-data');
+    fs.rmSync(dataDir, { recursive: true, force: true });
+    const sent = [];
+    const sock = { async sendMessage(jid, payload) { sent.push({ jid, payload }); return {}; } };
+    await db.runWithDataDir(dataDir, async () => {
+      assert.strictEqual(await sendPairingWelcome(sock, db, '263711111111@s.whatsapp.net'), true);
+      assert.strictEqual(await sendPairingWelcome(sock, db, '263711111111@s.whatsapp.net'), false);
+    });
+    assert.strictEqual(sent.length, 2, 'welcome and first menu should each be sent once');
+    assert(sent.every(item => item.jid === '263711111111@s.whatsapp.net'));
+    assert(Buffer.isBuffer(sent[0].payload.image), 'pairing welcome must use the configured/default bot image');
+    assert(sent[0].payload.caption.includes('PAIRING SUCCESSFUL'));
+    assert(Buffer.isBuffer(sent[1].payload.image), 'first menu must use the same bot image');
+    assert(sent[1].payload.caption.includes('MAIN MENU'));
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  await checkAsync('Shadow ban refuses removal when the bot is not a group admin and stores no false ban', async () => {
+    const db = require('../lib/db');
+    const vip = require('../lib/vip');
+    const owner = '263780706629@s.whatsapp.net';
+    const target = '263711111111@s.whatsapp.net';
+    const pass = vip.createPasslock(owner, '1h');
+    assert.strictEqual(vip.unlock(owner, pass.passlock).ok, true);
+    const group = 'shadow-ban-no-admin@g.us';
+    db.set('banned', group, []);
+    const ctx = mockCtx({
+      chatJid: group, sender: owner, isOwner: true, isAdmin: true, isBotAdmin: false,
+      mentions: [target], args: ['repeated spam'],
+      participants: [{ id: owner, admin: 'admin' }, { id: target, admin: null }]
+    });
+    const result = await commandMap.ban.run(ctx);
+    assert((typeof result === 'string' ? result : result.text).includes('BOT ADMIN REQUIRED'));
+    assert.strictEqual(db.get('banned', group, []).length, 0);
+    vip.lock(owner);
+  });
+
+  await checkAsync('Shadow ban reports WhatsApp rejection instead of claiming success', async () => {
+    const db = require('../lib/db');
+    const vip = require('../lib/vip');
+    const owner = '263780706629@s.whatsapp.net';
+    const target = '263711111111@s.whatsapp.net';
+    const pass = vip.createPasslock(owner, '1h');
+    assert.strictEqual(vip.unlock(owner, pass.passlock).ok, true);
+    const group = 'shadow-ban-failure@g.us';
+    db.set('banned', group, []);
+    const ctx = mockCtx({
+      chatJid: group, sender: owner, isOwner: true, isAdmin: true, isBotAdmin: true,
+      mentions: [target], args: ['repeated spam'],
+      participants: [{ id: owner, admin: 'admin' }, { id: target, admin: null }]
+    });
+    ctx.sock.groupParticipantsUpdate = async () => [{ status: '403', content: 'not-authorized' }];
+    const result = await commandMap.ban.run(ctx);
+    assert((typeof result === 'string' ? result : result.text).includes('BAN FAILED'));
+    assert.strictEqual(db.get('banned', group, []).length, 0);
+    vip.lock(owner);
+  });
+
+  await checkAsync('Shadow ban records the ban only after WhatsApp confirms removal', async () => {
+    const db = require('../lib/db');
+    const vip = require('../lib/vip');
+    const owner = '263780706629@s.whatsapp.net';
+    const target = '263711111111@s.whatsapp.net';
+    const pass = vip.createPasslock(owner, '1h');
+    assert.strictEqual(vip.unlock(owner, pass.passlock).ok, true);
+    const group = 'shadow-ban-success@g.us';
+    db.set('banned', group, []);
+    const ctx = mockCtx({
+      chatJid: group, sender: owner, isOwner: true, isAdmin: true, isBotAdmin: true,
+      mentions: [target], args: ['repeated spam'],
+      participants: [{ id: owner, admin: 'admin' }, { id: target, admin: null }]
+    });
+    let removed = false;
+    ctx.sock.groupParticipantsUpdate = async () => { removed = true; return [{ status: '200' }]; };
+    const result = await commandMap.ban.run(ctx);
+    assert(removed);
+    assert(result.text.includes('USER BANNED'));
+    assert.strictEqual(db.get('banned', group, []).length, 1);
+    vip.lock(owner);
+  });
+
+  await checkAsync('Shadow tempban rejects invalid durations instead of silently using 24 hours', async () => {
+    const vip = require('../lib/vip');
+    const owner = '263780706629@s.whatsapp.net';
+    const pass = vip.createPasslock(owner, '1h');
+    assert.strictEqual(vip.unlock(owner, pass.passlock).ok, true);
+    const ctx = mockCtx({
+      sender: owner, isOwner: true, isAdmin: true, isBotAdmin: true,
+      mentions: ['263711111111@s.whatsapp.net'], args: ['@263711111111', 'forever']
+    });
+    const result = await commandMap.tempban.run(ctx);
+    assert(result.includes('INVALID DURATION'));
+    vip.lock(owner);
+  });
+
+
   const names = Object.keys(commandMap);
   console.log(`Discovered ${names.length} registered commands.\n`);
 
