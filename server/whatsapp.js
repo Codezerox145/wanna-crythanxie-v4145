@@ -301,7 +301,7 @@ async function startSession(options) {
   active.set(id, entry);
 
   entry.ready = new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('WhatsApp did not become ready in time. Check the API connection and try again.')), 35000);
+    const timeout = setTimeout(() => reject(new Error('WhatsApp did not become ready in time. Check the API connection and try again.')), 75000);
     entry.resolveReady = value => { clearTimeout(timeout); resolve(value); };
     entry.rejectReady = error => { clearTimeout(timeout); reject(error); };
   });
