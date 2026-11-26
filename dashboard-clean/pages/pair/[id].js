@@ -70,13 +70,13 @@ export default function PairingCode() {
     <Layout title="Pairing code">
       <div className="mx-auto max-w-md rounded-2xl border border-slate-100 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <img src={BOT_AVATAR} alt={BOT_NAME} className="mx-auto mb-3 h-16 w-16 rounded-2xl border border-slate-200 object-cover shadow-sm dark:border-slate-700" />
-        <p className="mb-1 text-sm text-slate-500 dark:text-slate-400">WhatsApp device-linking code</p>
+        <div className="mb-4 rounded-xl border border-brand-600/20 bg-brand-600/5 px-4 py-3"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-brand-600">Universal pairing identity</p><p className="mt-1 text-2xl font-extrabold tracking-[.18em] text-brand-600">THANXIEE</p><p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">WANNA CRY THANXIEE · Developed by THANXIEE</p></div><p className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Official WhatsApp device-linking code</p>
         {error && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/30">{error}</p>}
         {session?.error && <p role="alert" className="mb-3 text-sm text-red-500">{session.error}</p>}
         {code ? (
           <>
             <p className="my-4 text-4xl font-bold tracking-[0.3em] text-brand-600">{code}</p>
-            <p className="mb-4 text-xs text-slate-400">Enter this 8-digit code in WhatsApp immediately. If WhatsApp says it is invalid or expired, request a new code.</p>
+            <p className="mb-4 text-xs text-slate-400">Enter this WhatsApp-generated code in WhatsApp immediately. THANXIEE is your shared branded pairing identity; WhatsApp requires its own generated code to authorize this device.</p>
             <button type="button" onClick={refreshCode} disabled={refreshing || session?.status === 'online'} className="mb-5 w-full rounded-xl border border-brand-600/30 px-4 py-2.5 text-sm font-semibold text-brand-600 disabled:opacity-50">
               {refreshing ? 'Refreshing code…' : 'Get a fresh code'}
             </button>
@@ -90,7 +90,7 @@ export default function PairingCode() {
         {session?.status === 'online' && <p className="mb-4 text-sm font-semibold text-emerald-500">Connected. Opening Bot Management…</p>}
         {session?.status === 'error' && <button type="button" onClick={refreshCode} disabled={refreshing} className="mb-4 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{refreshing ? 'Retrying…' : 'Retry pairing code'}</button>}
         <div className="space-y-2 rounded-xl bg-slate-50 p-4 text-left text-sm dark:bg-slate-800/50">
-          <p className="font-semibold">Link your device</p>
+          <p className="font-semibold">Link your device</p><p className="text-xs text-slate-500 dark:text-slate-400">THANXIEE is the same branded identity for every user. It is not a replacement authentication code.</p>
           <ol className="list-inside list-decimal space-y-1 text-slate-500 dark:text-slate-400">
             <li>Open WhatsApp → Settings → Linked Devices.</li>
             <li>Tap Link a Device, then choose Link with phone number instead.</li>
