@@ -118,6 +118,21 @@ async function main() {
     assert(card.caption.includes('.allmenu'));
   });
 
+  check('category menus split commands into ten-item Roman numeral sections', () => {
+    const menu = require('../lib/menu');
+    const commands = {};
+    for (let i = 1; i <= 30; i++) commands['groupcmd' + String(i).padStart(2, '0')] = { category: 'group', run() {} };
+    const category = menu.CATEGORIES.find(item => item.key === 'group');
+    const card = menu.renderCategory(category, commands, { isGroup: true });
+    assert.strictEqual(card.body.length, 3);
+    const expected = ['GROUP MANAGEMENT I', 'GROUP MANAGEMENT II', 'GROUP MANAGEMENT III'];
+    card.body.forEach((section, index) => {
+      assert(section.includes(expected[index]), 'missing section heading ' + expected[index]);
+      const commandLines = section.match(/^┃𖤍│ \d{2}\. \.groupcmd\d{2}$/gm) || [];
+      assert.strictEqual(commandLines.length, 10, 'each section must contain exactly ten commands');
+    });
+  });
+
   check('ALLMENU lists every public command in categorized image-card sections', () => {
     const menu = require('../lib/menu');
     const commands = {
