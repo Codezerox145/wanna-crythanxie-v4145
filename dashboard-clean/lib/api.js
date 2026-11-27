@@ -105,5 +105,12 @@ export const api = {
   sendChatMessage: (sessionId, chatJid, message) => request('/chat/send', { method: 'POST', body: { sessionId, chatJid, message } }),
   ownerOverview: () => request('/owner/overview'),
   ownerUsers: () => request('/owner/users'),
+  safetyMe: () => request('/safety/me'),
+  updateSafety: settings => request('/safety/me', { method: 'PATCH', body: settings }),
+  pauseSafety: () => request('/safety/pause', { method: 'POST', body: {} }),
+  resumeSafety: () => request('/safety/resume', { method: 'POST', body: {} }),
+  ownerSafety: () => request('/owner/safety'),
+  ownerSetAccountPause: (userId, paused) => request('/owner/safety/accounts/' + encodeURIComponent(userId), { method: 'PATCH', body: { paused } }),
+  ownerSetGlobalPause: paused => request('/owner/safety/global', { method: 'POST', body: { paused } }),
 }
 export function logout() { setToken(null); setUser(null); if (typeof window !== 'undefined') { sessionStorage.removeItem('token'); sessionStorage.removeItem('user') } }
