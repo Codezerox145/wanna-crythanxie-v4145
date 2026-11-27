@@ -21,6 +21,11 @@ const logger = pino({ level: process.env.BAILEYS_LOG_LEVEL || 'warn' });
 const root = path.resolve(__dirname, '..');
 const avatarPath = path.join(root, 'bot-avatar.jpg');
 
+function reconnectDelay(attempt) {
+  const count = Math.max(1, Math.min(8, Number(attempt) || 1));
+  return Math.min(60000, 2000 * (2 ** (count - 1)));
+}
+
 function textFromMessage(message) {
   const normalized = normalizeMessageContent(message) || message || {};
   const type = getContentType(normalized);
@@ -302,6 +307,7 @@ async function startSession(options) {
     id, sock, authDir, dataDir, accountId, accountRole, phoneNumber: String(phoneNumber || '').replace(/\D/g, ''),
     onUpdate, onMessage, reconnectTimer: null, schedulerTimer: null,
     closing: false, ready: null, pairingRequested: false,
+    reconnectAttempts: Math.max(0, Number(options.reconnectAttempts) || 0),
     resolveReady: null, rejectReady: null
   };
   active.set(id, entry);
@@ -409,6 +415,7 @@ async function startSession(options) {
     }
 
     if (connection === 'open') {
+      entry.reconnectAttempts = 0;
       const number = String(sock.user?.id || '').split(':')[0].split('@')[0] || entry.phoneNumber;
       onUpdate?.({ status: 'online', phone_number: number, connected_at: new Date().toISOString(), last_seen_at: new Date().toISOString(), pairing_code: null, error: null });
       entry.resolveReady?.({ status: 'online' });
@@ -439,10 +446,15 @@ async function startSession(options) {
         entry.rejectReady?.(new Error('WhatsApp logged this device out. Start a new pairing session.'));
       } else {
         clearTimeout(entry.reconnectTimer);
+        const attempt = entry.reconnectAttempts + 1;
+        entry.reconnectAttempts = attempt;
+        const waitMs = reconnectDelay(attempt) + Math.floor(Math.random() * 1000);
+        const reconnectOptions = { ...options, reconnectAttempts: attempt };
+        logger.warn({ sessionId: id, attempt, reconnectInMs: waitMs }, 'Scheduling WhatsApp reconnect with exponential backoff');
         entry.reconnectTimer = setTimeout(() => {
           active.delete(id);
-          startSession(options).catch(error => onUpdate?.({ status: 'error', pairing_code: null, error: String(error.message || 'WhatsApp reconnect failed.').slice(0, 240) }));
-        }, 2500);
+          startSession(reconnectOptions).catch(error => onUpdate?.({ status: 'error', pairing_code: null, error: String(error.message || 'WhatsApp reconnect failed.').slice(0, 240) }));
+        }, waitMs);
         entry.reconnectTimer.unref?.();
       }
     }
@@ -536,4 +548,4 @@ async function refreshPairingCode(id) {
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, sendPairingWelcome, refreshPairingCode, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText };
+module.exports = { startSession, sendPairingWelcome, refreshPairingCode, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText, reconnectDelay };
