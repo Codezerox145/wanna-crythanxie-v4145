@@ -450,7 +450,7 @@ async function main() {
       '../commands/botControl', '../commands/automation', '../commands/aiSuite',
       '../commands/funGames', '../commands/economy', '../commands/stickerMedia',
       '../commands/downloadMenu', '../commands/profileCommunity', '../commands/toolsInfo',
-      '../commands/bugDiagnostics', '../commands/vip', '../commands/shadowEnforcement'
+      '../commands/bugDiagnostics', '../commands/vip', '../commands/shadowEnforcement', '../commands/accountSafety'
     ];
     const seen = new Map();
     const dups = [];
