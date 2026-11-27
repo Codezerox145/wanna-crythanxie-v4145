@@ -84,6 +84,20 @@ async function sendCommandResult(sock, jid, result, db) {
   if (result.document) return sock.sendMessage(jid, { document: result.document, mimetype: result.mimetype || 'application/octet-stream', fileName: result.fileName || 'file' });
 }
 
+// Process chats concurrently while preserving message order within each chat.
+function enqueueIncoming(sock, session, message) {
+  const jid = message?.key?.remoteJid || 'unknown';
+  if (!session.messageQueues) session.messageQueues = new Map();
+  const previous = session.messageQueues.get(jid) || Promise.resolve();
+  let tracked;
+  tracked = previous.catch(() => {})
+    .then(() => processIncoming(sock, session, message))
+    .catch(error => logger.error({ err: error, sessionId: session.id, chat: jid }, 'Queued message processing failed'))
+    .finally(() => { if (session.messageQueues.get(jid) === tracked) session.messageQueues.delete(jid); });
+  session.messageQueues.set(jid, tracked);
+  return tracked;
+}
+
 async function processIncoming(sock, session, message) {
   const msg = message;
   const remoteJid = msg.key?.remoteJid;
@@ -198,43 +212,39 @@ function ctxQuotedKey(info, remoteJid) {
 async function sendPairingWelcome(sock, db, ownJid) {
   if (!ownJid || !String(ownJid).endsWith('@s.whatsapp.net')) return false;
   if (db.get('settings', 'pairingWelcomeSent', false)) return false;
-
-  // Mark before sending to prevent duplicate cards if Baileys emits multiple
-  // open events or the worker reconnects while delivery is in progress.
-  db.set('settings', 'pairingWelcomeSent', true);
-  db.set('settings', 'pairingWelcomeSentAt', Date.now());
-
-  const number = String(ownJid).split('@')[0];
-  const { brandedReply } = require('../lib/brand');
-  const welcomeText = brandedReply('PAIRING SUCCESSFUL', [
-    'Welcome aboard, @' + number + '!',
-    'Your WhatsApp account is now connected.',
-    'Here is your first main menu.'
-  ], { marker: '𖤍' });
-  const avatar = getAvatar(db);
-
-  if (avatar) {
-    try { await sock.sendMessage(ownJid, { image: avatar, caption: welcomeText.slice(0, 1024) }); }
-    catch (error) {
-      logger.warn({ err: error }, 'Pairing welcome image failed; sending text fallback');
-      try { await sock.sendMessage(ownJid, { text: welcomeText }); }
-      catch (fallbackError) { logger.warn({ err: fallbackError }, 'Pairing welcome text fallback failed'); }
+  if (db.get('settings', 'pairingWelcomeInProgress', false)) return false;
+  db.set('settings', 'pairingWelcomeInProgress', true);
+  let welcomeDelivered = false;
+  try {
+    const number = String(ownJid).split('@')[0];
+    const { brandedReply } = require('../lib/brand');
+    const welcomeText = brandedReply('PAIRING SUCCESSFUL', [
+      'Welcome aboard, @' + number + '!',
+      'Your WhatsApp account is now connected.',
+      'Type .menu to explore your personal bot commands.',
+      'Your commands and settings run in this private chat.'
+    ], { marker: '𖤍' });
+    const avatar = getAvatar(db);
+    if (avatar) {
+      try { await sock.sendMessage(ownJid, { image: avatar, caption: welcomeText.slice(0, 1024) }); welcomeDelivered = true; }
+      catch (error) { logger.warn({ err: error }, 'Pairing welcome image failed; sending text fallback'); }
     }
-  } else {
-    try { await sock.sendMessage(ownJid, { text: welcomeText }); }
-    catch (error) { logger.warn({ err: error }, 'Pairing welcome text failed'); }
+    if (!welcomeDelivered) {
+      try { await sock.sendMessage(ownJid, { text: welcomeText }); welcomeDelivered = true; }
+      catch (error) { logger.warn({ err: error }, 'Pairing welcome text failed'); }
+    }
+    if (!welcomeDelivered) return false;
+    const { mainMenu } = require('../lib/menu');
+    const { commandMap } = require('../lib/commandHandler');
+    const firstMenu = mainMenu({ sender: ownJid, isGroup: false, sock }, commandMap);
+    try { await sendCommandResult(sock, ownJid, firstMenu, db); }
+    catch (error) { logger.warn({ err: error }, 'First menu delivery failed; welcome was delivered successfully'); }
+    db.set('settings', 'pairingWelcomeSentAt', Date.now());
+    db.set('settings', 'pairingWelcomeSent', true);
+    return true;
+  } finally {
+    db.set('settings', 'pairingWelcomeInProgress', false);
   }
-
-  const { mainMenu } = require('../lib/menu');
-  const { commandMap } = require('../lib/commandHandler');
-  const firstMenu = mainMenu({ sender: ownJid, isGroup: false, sock }, commandMap);
-  try { await sendCommandResult(sock, ownJid, firstMenu, db); }
-  catch (error) {
-    logger.warn({ err: error }, 'First menu image failed; sending text fallback');
-    try { await sock.sendMessage(ownJid, { text: String(firstMenu.caption || firstMenu) }); }
-    catch (fallbackError) { logger.warn({ err: fallbackError }, 'First menu text fallback failed'); }
-  }
-  return true;
 }
 
 async function startSession(options) {
@@ -306,7 +316,7 @@ async function startSession(options) {
   const entry = {
     id, sock, authDir, dataDir, accountId, accountRole, phoneNumber: String(phoneNumber || '').replace(/\D/g, ''),
     onUpdate, onMessage, reconnectTimer: null, schedulerTimer: null,
-    closing: false, ready: null, pairingRequested: false,
+    closing: false, ready: null, pairingRequested: false, messageQueues: new Map(),
     reconnectAttempts: Math.max(0, Number(options.reconnectAttempts) || 0),
     resolveReady: null, rejectReady: null
   };
@@ -327,9 +337,9 @@ async function startSession(options) {
   }, 15000);
   entry.schedulerTimer.unref?.();
 
-  sock.ev.on('messages.upsert', async ({ messages, type }) => {
+  sock.ev.on('messages.upsert', ({ messages, type }) => {
     if (type !== 'notify') return;
-    for (const message of messages || []) await processIncoming(sock, entry, message);
+    for (const message of messages || []) enqueueIncoming(sock, entry, message);
   });
   sock.ev.on('group-participants.update', async update => {
     if (!['add', 'remove'].includes(update.action)) return;
