@@ -427,6 +427,15 @@ async function main() {
   });
 
 
+  check('Baileys reconnect uses bounded exponential backoff', () => {
+    const { reconnectDelay } = require('../server/whatsapp');
+    assert.strictEqual(reconnectDelay(1), 2000);
+    assert.strictEqual(reconnectDelay(2), 4000);
+    assert.strictEqual(reconnectDelay(3), 8000);
+    assert.strictEqual(reconnectDelay(8), 60000);
+    assert.strictEqual(reconnectDelay(99), 60000);
+  });
+
   const names = Object.keys(commandMap);
   console.log(`Discovered ${names.length} registered commands.\n`);
 
