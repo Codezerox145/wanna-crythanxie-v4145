@@ -16,6 +16,7 @@ const {
 } = require('@whiskeysockets/baileys');
 
 const active = new Map();
+const safety = require('./safety');
 const logger = pino({ level: process.env.BAILEYS_LOG_LEVEL || 'warn' });
 const root = path.resolve(__dirname, '..');
 const avatarPath = path.join(root, 'bot-avatar.jpg');
@@ -229,7 +230,7 @@ async function sendPairingWelcome(sock, db, ownJid) {
 }
 
 async function startSession(options) {
-  const { id, phoneNumber, authDir, dataDir, onUpdate, onMessage } = options;
+  const { id, phoneNumber, authDir, dataDir, onUpdate, onMessage, accountId, accountRole = 'user' } = options;
   if (active.has(id)) return active.get(id).ready;
   fs.mkdirSync(authDir, { recursive: true });
   fs.mkdirSync(dataDir, { recursive: true });
@@ -291,6 +292,8 @@ async function startSession(options) {
     connectTimeoutMs: 60000,
     defaultQueryTimeoutMs: 60000
   });
+
+  safety.attachSocket(sock, { sessionId: id, accountId, accountRole });
 
   const entry = {
     id, sock, authDir, dataDir, phoneNumber: String(phoneNumber || '').replace(/\D/g, ''),
@@ -414,6 +417,7 @@ async function startSession(options) {
     }
 
     if (connection === 'close' && !entry.closing) {
+      safety.detachSocket(id);
       const disconnectError = lastDisconnect?.error;
       const statusCode = disconnectError?.output?.statusCode || disconnectError?.statusCode || null;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
@@ -448,6 +452,7 @@ async function startSession(options) {
     clearTimeout(entry.reconnectTimer);
     clearInterval(entry.schedulerTimer);
     active.delete(id);
+    safety.detachSocket(id);
     try { sock.end(error); } catch (_) {}
     throw error;
   }
@@ -459,6 +464,7 @@ async function stopSession(id) {
   entry.closing = true;
   clearTimeout(entry.reconnectTimer);
   active.delete(id);
+  safety.detachSocket(id);
   try { entry.sock.end(new Error('Session stopped by account owner')); } catch (_) {}
   return true;
 }
@@ -470,6 +476,7 @@ async function logoutSession(id) {
   clearTimeout(entry.reconnectTimer);
   clearInterval(entry.schedulerTimer);
   active.delete(id);
+  safety.detachSocket(id);
   try { await entry.sock.logout(); }
   catch (_) { try { entry.sock.end(new Error('Session unlinked by account owner')); } catch (_) {} }
   return true;
