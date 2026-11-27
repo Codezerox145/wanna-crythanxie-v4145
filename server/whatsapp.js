@@ -172,7 +172,8 @@ async function processIncoming(sock, session, message) {
       quotedText, quotedMsgFull: quotedMessage ? { key: ctxQuotedKey(contextInfo, remoteJid), message: quotedMessage } : null,
       quotedImageBuffer: null, participants, groupMetadata,
       isAdmin: senderIsAdmin, isBotAdmin: Boolean(botEntry?.admin),
-      isOwner: false, isPrimaryOwner: false
+      isOwner: false, isPrimaryOwner: false,
+      sessionId: session.id, accountId: session.accountId, accountRole: session.accountRole
     };
     try {
       const result = await handleCommand(ctx);
@@ -296,7 +297,7 @@ async function startSession(options) {
   safety.attachSocket(sock, { sessionId: id, accountId, accountRole });
 
   const entry = {
-    id, sock, authDir, dataDir, phoneNumber: String(phoneNumber || '').replace(/\D/g, ''),
+    id, sock, authDir, dataDir, accountId, accountRole, phoneNumber: String(phoneNumber || '').replace(/\D/g, ''),
     onUpdate, onMessage, reconnectTimer: null, schedulerTimer: null,
     closing: false, ready: null, pairingRequested: false,
     resolveReady: null, rejectReady: null
