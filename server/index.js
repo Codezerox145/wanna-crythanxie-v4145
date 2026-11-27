@@ -11,6 +11,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const whatsapp = require('./whatsapp');
+const safety = require('./safety');
 
 const app = express();
 const PORT = Number(process.env.SERVER_PORT || process.env.PORT || 3000);
@@ -231,6 +232,7 @@ app.post('/sessions', auth, async (req, res) => {
   // Return the session immediately; Baileys connects and requests the code in the background.
   whatsapp.startSession({
     id, phoneNumber, ...paths,
+    accountId: req.user.id, accountRole: isOwnerEmail(req.user.email) ? 'owner' : 'user',
     onUpdate: patch => updateSession(id, patch),
     onMessage: message => recordMessage(message)
   }).catch(error => {
@@ -249,6 +251,7 @@ app.post('/sessions/:id/pairing-code', auth, async (req, res) => {
       updateSession(session.id, { status: 'starting', pairing_code: null, error: null });
       whatsapp.startSession({
         id: session.id, phoneNumber: session.phone_number, ...paths,
+        accountId: req.user.id, accountRole: isOwnerEmail(req.user.email) ? 'owner' : 'user',
         onUpdate: patch => updateSession(session.id, patch),
         onMessage: message => recordMessage(message)
       }).catch(error => updateSession(session.id, { status: 'error', pairing_code: null, error: String(error.message || 'Unable to restart WhatsApp pairing.').slice(0, 240) }));
@@ -282,6 +285,7 @@ app.post('/sessions/:id/restart', auth, async (req, res) => {
     updateSession(session.id, { status: 'restarting', error: null });
     const result = await whatsapp.restartSession({
       id: session.id, phoneNumber: session.phone_number, ...paths,
+      accountId: req.user.id, accountRole: isOwnerEmail(req.user.email) ? 'owner' : 'user',
       onUpdate: patch => updateSession(session.id, patch),
       onMessage: message => recordMessage(message)
     });
@@ -290,6 +294,35 @@ app.post('/sessions/:id/restart', auth, async (req, res) => {
     updateSession(session.id, { status: 'error', error: String(error.message || 'Restart failed.').slice(0, 240) });
     return res.status(502).json({ error: 'Could not restart this WhatsApp session.' });
   }
+});
+
+
+app.get('/safety/me', auth, (req, res) => {
+  res.set('Cache-Control', 'no-store, max-age=0');
+  return res.json({
+    role: isOwnerEmail(req.user.email) ? 'owner' : 'user',
+    account: safety.accountSnapshot(req.user.id),
+    events: safety.accountEvents(req.user.id, 50)
+  });
+});
+app.patch('/safety/me', auth, (req, res) => {
+  try {
+    safety.updateAccountSettings(req.user.id, req.body || {});
+    return res.json({ ok: true, account: safety.accountSnapshot(req.user.id) });
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Safety settings could not be updated.' });
+  }
+});
+app.post('/safety/pause', auth, (req, res) => {
+  safety.setAccountPaused(req.user.id, true);
+  return res.json({ ok: true, account: safety.accountSnapshot(req.user.id) });
+});
+app.post('/safety/resume', auth, (req, res) => {
+  safety.setAccountPaused(req.user.id, false);
+  return res.json({ ok: true, account: safety.accountSnapshot(req.user.id) });
+});
+app.get('/safety/events', auth, (req, res) => {
+  return res.json({ events: safety.accountEvents(req.user.id, 100) });
 });
 
 app.get('/runtime', auth, (_req, res) => {
@@ -542,6 +575,40 @@ app.get('/owner/overview', auth, ownerOnly, (_req, res) => {
     environment: { server_registry_configured: serverRegistry().length > 0, owner_emails_configured: (process.env.OWNER_EMAILS || '').split(',').filter(Boolean).length > 0, github_verification: true, email_delivery_configured: Boolean(process.env.RESEND_API_KEY && process.env.OWNER_EMAILS) }
   });
 });
+
+app.get('/owner/safety', auth, ownerOnly, (_req, res) => {
+  const users = readStore('users', []);
+  const sessions = readStore('sessions', []);
+  const accounts = users.map(user => {
+    const owned = sessions.filter(session => session.user_id === user.id);
+    return {
+      id: user.id,
+      email: user.email,
+      role: isOwnerEmail(user.email) ? 'owner' : 'user',
+      sessions_total: owned.length,
+      sessions_online: owned.filter(session => session.status === 'online').length,
+      safety: safety.accountSnapshot(user.id)
+    };
+  }).sort((a, b) => Number(b.role === 'owner') - Number(a.role === 'owner') || b.sessions_total - a.sessions_total);
+  return res.json({ global: safety.globalSnapshot(), accounts, events: safety.globalEvents(100) });
+});
+app.patch('/owner/safety/accounts/:userId', auth, ownerOnly, (req, res) => {
+  const userId = String(req.params.userId || '').slice(0, 128);
+  const target = readStore('users', []).find(user => user.id === userId);
+  if (!target) return res.status(404).json({ error: 'Dashboard account not found.' });
+  if (typeof req.body?.paused !== 'boolean') return res.status(400).json({ error: 'Provide paused as true or false.' });
+  safety.setAccountPaused(userId, req.body.paused, req.user.id);
+  return res.json({ ok: true, account: safety.accountSnapshot(userId) });
+});
+app.post('/owner/safety/global', auth, ownerOnly, (req, res) => {
+  if (typeof req.body?.paused !== 'boolean') return res.status(400).json({ error: 'Provide paused as true or false.' });
+  safety.setGlobalPaused(req.body.paused, req.user.id);
+  return res.json({ ok: true, global: safety.globalSnapshot() });
+});
+app.get('/owner/safety/events', auth, ownerOnly, (_req, res) => {
+  return res.json({ events: safety.globalEvents(200) });
+});
+
 app.get('/owner/users', auth, ownerOnly, (_req, res) => {
   const users = readStore('users', []).map(user => ({ id: user.id, email: user.email, role: isOwnerEmail(user.email) ? 'owner' : 'user', created_at: user.created_at }));
   res.json({ users });
@@ -558,8 +625,10 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     if (!['online', 'reconnecting', 'connecting'].includes(session.status)) continue;
     const paths = sessionPaths(session.id);
     if (!fs.existsSync(path.join(paths.authDir, 'creds.json'))) continue;
+    const ownerUser = readStore('users', []).find(user => user.id === session.user_id);
     whatsapp.startSession({
       id: session.id, phoneNumber: session.phone_number, ...paths,
+      accountId: session.user_id, accountRole: isOwnerEmail(ownerUser?.email) ? 'owner' : 'user',
       onUpdate: patch => updateSession(session.id, patch),
       onMessage: message => recordMessage(message)
     }).catch(error => updateSession(session.id, { status: 'error', error: String(error.message || 'Reconnect failed.').slice(0, 200) }));
