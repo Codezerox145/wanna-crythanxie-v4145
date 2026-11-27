@@ -70,7 +70,9 @@ async function sendCommandResult(sock, jid, result, db) {
   if (result.text) {
     const payload = { text: ensureBrandedText(result.text) };
     if (Array.isArray(result.mentions)) payload.mentions = result.mentions;
-    return sock.sendMessage(jid, payload);
+    const sent = await sock.sendMessage(jid, payload);
+    if (typeof result.afterSend === 'function') await result.afterSend();
+    return sent;
   }
   if (result.image) return sock.sendMessage(jid, { image: result.image, caption: result.caption || '' });
   if (result.video) return sock.sendMessage(jid, { video: result.video, caption: result.caption || '' });
