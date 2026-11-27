@@ -115,11 +115,13 @@ const commands = {
     category: 'anti', usage: '.safetypause', example: '.safetypause',
     async run(ctx) {
       snapshot(ctx);
-      safety.setAccountPaused(ctx.accountId, true);
-      return brandedReply('ACCOUNT SAFETY PAUSED', [
-        'Automated outbound messages are now paused for all sessions under your account.',
-        'Use .safetyresume when you are ready to resume.'
-      ]);
+      return {
+        text: brandedReply('ACCOUNT SAFETY PAUSED', [
+          'Automated outbound messages are now paused for all sessions under your account.',
+          'Use .safetyresume when you are ready to resume.'
+        ]),
+        afterSend: () => safety.setAccountPaused(ctx.accountId, true)
+      };
     }
   },
   safetyresume: {
