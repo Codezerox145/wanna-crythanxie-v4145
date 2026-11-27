@@ -80,6 +80,9 @@ function mockCtx(overrides = {}) {
   const sock = overrides.sock || mockSock();
   return Object.assign({
     sock,
+    sessionId: 'test-session-id',
+    accountId: 'test-account-id',
+    accountRole: 'owner',
     msg: { key: { remoteJid: '12345-group@g.us', participant: '263711111111@s.whatsapp.net', fromMe: false } },
     chatJid: '12345-group@g.us',
     isGroup: true,
