@@ -5,6 +5,7 @@ const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+const bcrypt = require('bcryptjs')
 const net = require('node:net')
 
 const root = path.join(__dirname, '..')
@@ -38,6 +39,12 @@ async function waitForApi(url) {
 async function main() {
   const port = await freePort()
   const base = 'http://127.0.0.1:' + port
+  const ownerPassword = 'owner-test-password'
+  const ownerHash = await bcrypt.hash(ownerPassword, 4)
+  fs.writeFileSync(path.join(dataDir, 'users.json'), JSON.stringify([{
+    id: 'owner-test-id', email: 'owner@example.com', password_hash: ownerHash,
+    created_at: new Date().toISOString()
+  }]))
   child = spawn(process.execPath, [path.join(root, 'server', 'index.js')], {
     cwd: root,
     env: {
@@ -127,6 +134,90 @@ async function main() {
   })
   assert.equal(runtime.status, 200)
   assert.equal((await runtime.json()).max_sessions_per_account, 3)
+
+  const safetyMe = await fetch(base + '/safety/me', {
+    headers: { Authorization: 'Bearer ' + loggedIn.token }
+  })
+  assert.equal(safetyMe.status, 200)
+  const safetyData = await safetyMe.json()
+  assert.equal(safetyData.role, 'user')
+  assert.equal(safetyData.account.account_paused, false)
+  assert.equal(safetyData.account.settings.min_interval_ms, 2500)
+
+  const savedSafety = await fetch(base + '/safety/me', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + loggedIn.token },
+    body: JSON.stringify({ minIntervalMs: 1, maxPerMinute: 999, duplicateWindowMs: 1, maxQueue: 999 })
+  })
+  assert.equal(savedSafety.status, 200)
+  const savedSafetyData = await savedSafety.json()
+  assert.equal(savedSafetyData.account.settings.min_interval_ms, 2000)
+  assert.equal(savedSafetyData.account.settings.max_per_minute, 20)
+  assert.equal(savedSafetyData.account.settings.duplicate_window_ms, 10000)
+  assert.equal(savedSafetyData.account.settings.max_queue, 50)
+
+  const safetyPause = await fetch(base + '/safety/pause', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + loggedIn.token }
+  })
+  assert.equal(safetyPause.status, 200)
+  assert.equal((await safetyPause.json()).account.account_paused, true)
+  const safetyResume = await fetch(base + '/safety/resume', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + loggedIn.token }
+  })
+  assert.equal(safetyResume.status, 200)
+  assert.equal((await safetyResume.json()).account.account_paused, false)
+
+  const guestCannotSeeOwnerSafety = await fetch(base + '/owner/safety', {
+    headers: { Authorization: 'Bearer ' + loggedIn.token }
+  })
+  assert.equal(guestCannotSeeOwnerSafety.status, 403)
+
+  const ownerLogin = await fetch(base + '/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'owner@example.com', password: ownerPassword })
+  })
+  assert.equal(ownerLogin.status, 200)
+  const owner = await ownerLogin.json()
+  assert.equal(owner.user.is_owner, true)
+
+  const ownerSafety = await fetch(base + '/owner/safety', {
+    headers: { Authorization: 'Bearer ' + owner.token }
+  })
+  assert.equal(ownerSafety.status, 200)
+  const ownerSafetyData = await ownerSafety.json()
+  assert.ok(ownerSafetyData.accounts.some(item => item.id === loggedIn.user.id))
+
+  const ownerPausesGuest = await fetch(base + '/owner/safety/accounts/' + encodeURIComponent(loggedIn.user.id), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + owner.token },
+    body: JSON.stringify({ paused: true })
+  })
+  assert.equal(ownerPausesGuest.status, 200)
+  assert.equal((await ownerPausesGuest.json()).account.account_paused, true)
+
+  const ownerResumesGuest = await fetch(base + '/owner/safety/accounts/' + encodeURIComponent(loggedIn.user.id), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + owner.token },
+    body: JSON.stringify({ paused: false })
+  })
+  assert.equal(ownerResumesGuest.status, 200)
+  assert.equal((await ownerResumesGuest.json()).account.account_paused, false)
+
+  const globalPause = await fetch(base + '/owner/safety/global', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + owner.token },
+    body: JSON.stringify({ paused: true })
+  })
+  assert.equal(globalPause.status, 200)
+  assert.equal((await globalPause.json()).global.paused, true)
+
+  const globalResume = await fetch(base + '/owner/safety/global', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + owner.token },
+    body: JSON.stringify({ paused: false })
+  })
+  assert.equal(globalResume.status, 200)
+  assert.equal((await globalResume.json()).global.paused, false)
 
   console.log('API integration checks passed: health, CORS, guest access, disabled registration, owner-role gating, server registry, sessions and runtime.')
 }
