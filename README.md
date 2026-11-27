@@ -120,6 +120,25 @@ The repository contains a pairing-demo.gif asset. It has not yet been verified a
 
 All secret values in .env.example are blank by design. Copy the file to .env locally or fill the Render environment settings manually. Never commit .env, API keys, JWT secrets, passwords, or WhatsApp auth folders.
 
+
+## Account Safety Centre
+
+The dashboard includes an Account Safety Centre for every authenticated workspace. Each account has independent outbound pacing, duplicate suppression, a bounded send queue, rolling per-minute limits, send-failure monitoring, and account-scoped pause/resume controls. The owner can inspect account safety summaries, pause a specific account, or apply a global emergency pause.
+
+WhatsApp commands:
+- `.antiban` — show the account's active outbound safeguards.
+- `.accounthealth` — show message, block, failure, and pause counters.
+- `.sendlimits` — show the account's configured limits.
+- `.ratelimit 4 10` — set a 4-second minimum interval and 10-message rolling minute cap (supported range: 2–15 seconds and 4–20 messages/minute).
+- `.spamguard` — show duplicate and spam-prevention status.
+- `.safetypause` / `.safetyresume` — pause or resume outbound automation for the current dashboard account.
+- `.safetylogs` — show recent safety events.
+- `.sessioncheck` — include the current account's safety state.
+
+These controls reduce accidental message bursts and duplicate sends; they cannot guarantee immunity from WhatsApp restrictions. Baileys is an unofficial WhatsApp Web client. Do not send unsolicited bulk messages, and stop sending when WhatsApp reports a restriction.
+
+Safety settings and audit events are stored beneath `PLATFORM_DATA_DIR`. On Render Free, that filesystem is ephemeral; use persistent storage or an external durable store before relying on saved settings across restarts. The current Render Free service also cannot guarantee persistent Baileys authentication.
+
 ## Security notes
 
 - Each account sees only its own sessions.

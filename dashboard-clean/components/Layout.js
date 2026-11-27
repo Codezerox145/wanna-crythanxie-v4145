@@ -8,6 +8,7 @@ const AVATAR = process.env.NEXT_PUBLIC_BOT_AVATAR_URL || 'https://raw.githubuser
 const NAV = [
   { href: '/overview', label: 'Dashboard', icon: '⌂' },
   { href: '/sessions', label: 'Sessions', icon: '▣' },
+  { href: '/safety', label: 'Safety Centre', icon: '⛨' },
   { href: '/pair', label: 'Pairing', icon: '↗' },
   { href: '/chat', label: 'Chat centre', icon: '☏' },
   { href: '/users', label: 'Find users', icon: '⌕' },

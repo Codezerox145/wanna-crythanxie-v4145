@@ -84,7 +84,15 @@ const commands = {
   },
   sessioncheck: {
     category: 'bug', usage: '.sessioncheck', example: '.sessioncheck',
-    async run(ctx) { return brandedReply('SESSION CHECK', [`Connected as: ${ctx.sock?.user?.id || 'unknown'}`]); }
+    async run(ctx) {
+      const data = ctx.accountId ? require('../server/safety').accountSnapshot(ctx.accountId) : null;
+      return brandedReply('SESSION CHECK', [
+        `Connected as: ${ctx.sock?.user?.id || 'unknown'}`,
+        data ? `Account safety: ${data.global_paused || data.account_paused ? 'PAUSED' : 'ACTIVE'}` : 'Account safety: unavailable',
+        data ? `Active sessions: ${data.active_sessions}` : '',
+        data ? `Accepted messages: ${data.stats.sent || 0}` : ''
+      ].filter(Boolean));
+    }
   },
   reportbug: {
     category: 'bug', usage: '.reportbug <description>', example: '.reportbug sticker command crashes on gifs',

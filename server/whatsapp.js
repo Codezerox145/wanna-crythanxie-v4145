@@ -16,9 +16,15 @@ const {
 } = require('@whiskeysockets/baileys');
 
 const active = new Map();
+const safety = require('./safety');
 const logger = pino({ level: process.env.BAILEYS_LOG_LEVEL || 'warn' });
 const root = path.resolve(__dirname, '..');
 const avatarPath = path.join(root, 'bot-avatar.jpg');
+
+function reconnectDelay(attempt) {
+  const count = Math.max(1, Math.min(8, Number(attempt) || 1));
+  return Math.min(60000, 2000 * (2 ** (count - 1)));
+}
 
 function textFromMessage(message) {
   const normalized = normalizeMessageContent(message) || message || {};
@@ -69,7 +75,9 @@ async function sendCommandResult(sock, jid, result, db) {
   if (result.text) {
     const payload = { text: ensureBrandedText(result.text) };
     if (Array.isArray(result.mentions)) payload.mentions = result.mentions;
-    return sock.sendMessage(jid, payload);
+    const sent = await sock.sendMessage(jid, payload);
+    if (typeof result.afterSend === 'function') await result.afterSend();
+    return sent;
   }
   if (result.image) return sock.sendMessage(jid, { image: result.image, caption: result.caption || '' });
   if (result.video) return sock.sendMessage(jid, { video: result.video, caption: result.caption || '' });
@@ -171,7 +179,8 @@ async function processIncoming(sock, session, message) {
       quotedText, quotedMsgFull: quotedMessage ? { key: ctxQuotedKey(contextInfo, remoteJid), message: quotedMessage } : null,
       quotedImageBuffer: null, participants, groupMetadata,
       isAdmin: senderIsAdmin, isBotAdmin: Boolean(botEntry?.admin),
-      isOwner: false, isPrimaryOwner: false
+      isOwner: false, isPrimaryOwner: false,
+      sessionId: session.id, accountId: session.accountId, accountRole: session.accountRole
     };
     try {
       const result = await handleCommand(ctx);
@@ -229,7 +238,7 @@ async function sendPairingWelcome(sock, db, ownJid) {
 }
 
 async function startSession(options) {
-  const { id, phoneNumber, authDir, dataDir, onUpdate, onMessage } = options;
+  const { id, phoneNumber, authDir, dataDir, onUpdate, onMessage, accountId, accountRole = 'user' } = options;
   if (active.has(id)) return active.get(id).ready;
   fs.mkdirSync(authDir, { recursive: true });
   fs.mkdirSync(dataDir, { recursive: true });
@@ -292,10 +301,13 @@ async function startSession(options) {
     defaultQueryTimeoutMs: 60000
   });
 
+  safety.attachSocket(sock, { sessionId: id, accountId, accountRole });
+
   const entry = {
-    id, sock, authDir, dataDir, phoneNumber: String(phoneNumber || '').replace(/\D/g, ''),
+    id, sock, authDir, dataDir, accountId, accountRole, phoneNumber: String(phoneNumber || '').replace(/\D/g, ''),
     onUpdate, onMessage, reconnectTimer: null, schedulerTimer: null,
     closing: false, ready: null, pairingRequested: false,
+    reconnectAttempts: Math.max(0, Number(options.reconnectAttempts) || 0),
     resolveReady: null, rejectReady: null
   };
   active.set(id, entry);
@@ -403,6 +415,7 @@ async function startSession(options) {
     }
 
     if (connection === 'open') {
+      entry.reconnectAttempts = 0;
       const number = String(sock.user?.id || '').split(':')[0].split('@')[0] || entry.phoneNumber;
       onUpdate?.({ status: 'online', phone_number: number, connected_at: new Date().toISOString(), last_seen_at: new Date().toISOString(), pairing_code: null, error: null });
       entry.resolveReady?.({ status: 'online' });
@@ -414,6 +427,7 @@ async function startSession(options) {
     }
 
     if (connection === 'close' && !entry.closing) {
+      safety.detachSocket(id);
       const disconnectError = lastDisconnect?.error;
       const statusCode = disconnectError?.output?.statusCode || disconnectError?.statusCode || null;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
@@ -432,10 +446,15 @@ async function startSession(options) {
         entry.rejectReady?.(new Error('WhatsApp logged this device out. Start a new pairing session.'));
       } else {
         clearTimeout(entry.reconnectTimer);
+        const attempt = entry.reconnectAttempts + 1;
+        entry.reconnectAttempts = attempt;
+        const waitMs = reconnectDelay(attempt) + Math.floor(Math.random() * 1000);
+        const reconnectOptions = { ...options, reconnectAttempts: attempt };
+        logger.warn({ sessionId: id, attempt, reconnectInMs: waitMs }, 'Scheduling WhatsApp reconnect with exponential backoff');
         entry.reconnectTimer = setTimeout(() => {
           active.delete(id);
-          startSession(options).catch(error => onUpdate?.({ status: 'error', pairing_code: null, error: String(error.message || 'WhatsApp reconnect failed.').slice(0, 240) }));
-        }, 2500);
+          startSession(reconnectOptions).catch(error => onUpdate?.({ status: 'error', pairing_code: null, error: String(error.message || 'WhatsApp reconnect failed.').slice(0, 240) }));
+        }, waitMs);
         entry.reconnectTimer.unref?.();
       }
     }
@@ -448,6 +467,7 @@ async function startSession(options) {
     clearTimeout(entry.reconnectTimer);
     clearInterval(entry.schedulerTimer);
     active.delete(id);
+    safety.detachSocket(id);
     try { sock.end(error); } catch (_) {}
     throw error;
   }
@@ -459,6 +479,7 @@ async function stopSession(id) {
   entry.closing = true;
   clearTimeout(entry.reconnectTimer);
   active.delete(id);
+  safety.detachSocket(id);
   try { entry.sock.end(new Error('Session stopped by account owner')); } catch (_) {}
   return true;
 }
@@ -470,6 +491,7 @@ async function logoutSession(id) {
   clearTimeout(entry.reconnectTimer);
   clearInterval(entry.schedulerTimer);
   active.delete(id);
+  safety.detachSocket(id);
   try { await entry.sock.logout(); }
   catch (_) { try { entry.sock.end(new Error('Session unlinked by account owner')); } catch (_) {} }
   return true;
@@ -526,4 +548,4 @@ async function refreshPairingCode(id) {
 function isRunning(id) { return active.has(id); }
 function runningCount() { return active.size; }
 
-module.exports = { startSession, sendPairingWelcome, refreshPairingCode, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText };
+module.exports = { startSession, sendPairingWelcome, refreshPairingCode, stopSession, logoutSession, removeSession, restartSession, sendText, listGroups, groupInviteCode, sendPoll, isRunning, runningCount, ensureBrandedText, reconnectDelay };

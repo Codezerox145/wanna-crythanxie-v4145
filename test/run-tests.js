@@ -80,6 +80,9 @@ function mockCtx(overrides = {}) {
   const sock = overrides.sock || mockSock();
   return Object.assign({
     sock,
+    sessionId: 'test-session-id',
+    accountId: 'test-account-id',
+    accountRole: 'owner',
     msg: { key: { remoteJid: '12345-group@g.us', participant: '263711111111@s.whatsapp.net', fromMe: false } },
     chatJid: '12345-group@g.us',
     isGroup: true,
@@ -424,6 +427,15 @@ async function main() {
   });
 
 
+  check('Baileys reconnect uses bounded exponential backoff', () => {
+    const { reconnectDelay } = require('../server/whatsapp');
+    assert.strictEqual(reconnectDelay(1), 2000);
+    assert.strictEqual(reconnectDelay(2), 4000);
+    assert.strictEqual(reconnectDelay(3), 8000);
+    assert.strictEqual(reconnectDelay(8), 60000);
+    assert.strictEqual(reconnectDelay(99), 60000);
+  });
+
   const names = Object.keys(commandMap);
   console.log(`Discovered ${names.length} registered commands.\n`);
 
@@ -447,7 +459,7 @@ async function main() {
       '../commands/botControl', '../commands/automation', '../commands/aiSuite',
       '../commands/funGames', '../commands/economy', '../commands/stickerMedia',
       '../commands/downloadMenu', '../commands/profileCommunity', '../commands/toolsInfo',
-      '../commands/bugDiagnostics', '../commands/vip', '../commands/shadowEnforcement'
+      '../commands/bugDiagnostics', '../commands/vip', '../commands/shadowEnforcement', '../commands/accountSafety'
     ];
     const seen = new Map();
     const dups = [];
