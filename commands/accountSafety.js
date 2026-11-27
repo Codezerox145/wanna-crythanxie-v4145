@@ -100,17 +100,6 @@ const commands = {
       ]);
     }
   },
-  sessioncheck: {
-    category: 'anti', usage: '.sessioncheck', example: '.sessioncheck',
-    async run(ctx) {
-      const data = snapshot(ctx);
-      return brandedReply('SESSION CHECK', [
-        'WhatsApp connection : ' + (ctx.sock?.user ? 'CONNECTED' : 'NOT CONNECTED'),
-        'Connected identity : ' + (ctx.sock?.user?.id || 'Unknown'),
-        ...pausedLines(data)
-      ]);
-    }
-  },
   safetypause: {
     category: 'anti', usage: '.safetypause', example: '.safetypause',
     async run(ctx) {
